@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import armazenamento, comunica, dados, notifica
+from . import armazenamento, comunica, dados, ia, notifica
 
 RAIZ = Path(__file__).resolve().parent.parent
 DADOS = RAIZ / "data"
@@ -65,6 +65,30 @@ def _vara(r: dict) -> str:
     return (r.get("orgao") or "").split(" - ")[-1]
 
 
+LIMITE_IA_POR_EXECUCAO = 10
+
+
+def ler_com_ia(lista: list[dict], novas: list[str], hoje: date) -> None:
+    """Resume com IA as intimações novas e, aos poucos, as dos últimos 45 dias ainda sem resumo."""
+    feitas = armazenamento.ler_json(dados.IA, {})
+    limite = (hoje - timedelta(days=45)).isoformat()
+    por_chave = {r["chave"]: r for r in lista}
+    fila = [c for c in novas if c not in feitas]
+    fila += [r["chave"] for r in reversed(lista)
+             if r["chave"] not in feitas and r["chave"] not in fila and r.get("disponibilizacao", "") >= limite]
+    mudou = False
+    for chave in fila[:LIMITE_IA_POR_EXECUCAO]:
+        r = por_chave[chave]
+        try:
+            feitas[chave] = ia.resumir(r.get("texto", ""), r.get("partes", ""), r.get("orgao", ""))
+            mudou = True
+        except Exception as e:  # a IA nunca derruba a rotina
+            print(f"IA indisponível para {r.get('processo')}: {e}")
+            break
+    if mudou:
+        armazenamento.gravar_json(dados.IA, feitas)
+
+
 def mensagem_nova(r: dict) -> str:
     linhas = [
         "🔔 Nova intimação",
@@ -78,6 +102,8 @@ def mensagem_nova(r: dict) -> str:
             linhas.append(f"   (se dias duvidosos não forem úteis: {_br(r['fatal_alternativo'])})")
         linhas.append(f"Contagem: {r['contagem']}")
     linhas.append(f"Obs.: {r['prazo_obs']}")
+    if r.get("ia"):
+        linhas.append(f"IA: {r['ia'].get('resumo', '')} Providência: {r['ia'].get('providencia', '')}")
     linhas.append("")
     texto = r.get("texto", "")
     linhas.append("Trecho: " + texto[:700] + ("…" if len(texto) > 700 else ""))
@@ -235,6 +261,8 @@ def executar() -> int:
     registros = {k: calcular_registro(r) for k, r in registros.items()}
     lista = sorted(registros.values(), key=lambda r: r.get("disponibilizacao", ""))
     _gravar(INTIMACOES, lista)
+    if ia.ativa():
+        ler_com_ia(lista, novas, hoje)
     unif = dados.unificar(lista, hoje)
     por_chave = {r["chave"]: r for r in unif}
     print(f"{len(brutos)} comunicações no período; {len(novas)} novas.")
@@ -250,13 +278,21 @@ def executar() -> int:
         for chave in novas:
             r = por_chave.get(chave) or registros[chave]
             fatal = f" — fatal {_br(r['fatal'])}" if r.get("fatal") else ""
-            notifica.enviar(mensagem_nova(r), titulo=f"🔔 Nova intimação{fatal}",
-                            corpo=f"{r.get('partes') or r['processo']} — {_vara(r)}. {r['prazo_obs']}",
-                            tag=chave)
+            corpo = f"{r.get('partes') or r['processo']} — {_vara(r)}. "
+            corpo += (r["ia"]["providencia"] if r.get("ia") and r["ia"].get("providencia") else r["prazo_obs"])
+            notifica.enviar(mensagem_nova(r), titulo=f"🔔 Nova intimação{fatal}", corpo=corpo, tag=chave)
         if agora.hour >= HORA_RESUMO and estado.get("ultimo_resumo") != hoje.isoformat():
             notifica.enviar(mensagem_resumo(unif, hoje), titulo="📋 Resumo do dia",
                             corpo=resumo_curto(unif), tag="resumo")
             estado["ultimo_resumo"] = hoje.isoformat()
+
+    if agora.weekday() == 0 and agora.hour >= HORA_RESUMO and estado.get("ultimo_relatorio") != hoje.isoformat():
+        semana = [r for r in dados.abertos(unif) if r["dias_restantes"] <= 7]
+        notifica.enviar(f"📄 Relatório da semana: {len(semana)} prazo(s) até {_br((hoje + timedelta(days=7)).isoformat())}.",
+                        titulo="📄 Prazos da semana",
+                        corpo=f"{len(semana)} prazo(s) nos próximos 7 dias. Toque para abrir o relatório.",
+                        tag="relatorio", url="/relatorio.html")
+        estado["ultimo_relatorio"] = hoje.isoformat()
 
     if HORA_RESUMO <= agora.hour < HORA_LIMITE_LEMBRETE:
         for r, marco in lembretes_devidos(unif, estado["lembretes"]):

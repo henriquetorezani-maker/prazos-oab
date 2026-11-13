@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 
 from flask import Flask, jsonify, request, send_from_directory, session
 
-from . import armazenamento, config, dados as dados_mod, push
+from . import armazenamento, config, dados as dados_mod, ia as ia_mod, push
 
 TZ = ZoneInfo("America/Sao_Paulo")
 PASTA_APP = Path(__file__).resolve().parent.parent / "app"
@@ -67,6 +67,63 @@ def service_worker():
     resp.headers["Cache-Control"] = "no-cache"
     resp.headers["Service-Worker-Allowed"] = "/"
     return resp
+
+
+@app.get("/cal/<token>.ics")
+def calendario(token):
+    """Feed de calendário (Google Agenda, iPhone). Protegido por um token secreto no endereço."""
+    cfg = config.carregar()
+    if not hmac.compare_digest(token, cfg["calendario_token"]):
+        return "não encontrado", 404
+    regs = armazenamento.ler_json("data/intimacoes.json", [])
+    hoje = datetime.now(TZ).date()
+    itens = [r for r in dados_mod.unificar(regs, hoje) if r.get("fatal") and not r["cumprido"]
+             and r.get("dias_restantes", -1) >= -30]
+    resp = app.response_class(gerar_ics(itens, cfg.get("url_app", "")), mimetype="text/calendar")
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+def _ics_esc(s: str) -> str:
+    return (s or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
+
+
+def _ics_dobra(linha: str) -> str:
+    """Quebra linhas longas (RFC 5545: até 75 octetos, continuação com espaço)."""
+    out, atual = [], ""
+    for ch in linha:
+        if len((atual + ch).encode()) > 73:
+            out.append(atual)
+            atual = " " + ch
+        else:
+            atual += ch
+    out.append(atual)
+    return "\r\n".join(out)
+
+
+def gerar_ics(itens: list[dict], url_app: str) -> str:
+    agora = datetime.now(TZ).strftime("%Y%m%dT%H%M%S")
+    linhas = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//prazos-oab//PT-BR", "CALSCALE:GREGORIAN",
+              "METHOD:PUBLISH", "X-WR-CALNAME:Prazos OAB", "X-WR-TIMEZONE:America/Sao_Paulo",
+              "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H"]
+    for r in itens:
+        d = date.fromisoformat(r["fatal"])
+        fim = d + timedelta(days=1)
+        quem = r.get("partes") or r["processo"]
+        desc = f"Processo {r['processo']}\n{r.get('orgao', '')}\n{r.get('prazo_obs', '')}"
+        if r.get("ia") and r["ia"].get("providencia"):
+            desc += f"\nProvidência (IA): {r['ia']['providencia']}"
+        if r.get("nota"):
+            desc += f"\nNota: {r['nota']}"
+        desc += "\nConfira sempre no PJe."
+        linhas += ["BEGIN:VEVENT", f"UID:{r['chave']}@prazos-oab", f"DTSTAMP:{agora}",
+                   f"DTSTART;VALUE=DATE:{d:%Y%m%d}", f"DTEND;VALUE=DATE:{fim:%Y%m%d}",
+                   f"SUMMARY:{_ics_esc('⚖️ Prazo fatal — ' + quem)}",
+                   f"DESCRIPTION:{_ics_esc(desc)}", f"URL:{url_app or ''}", "TRANSP:TRANSPARENT",
+                   "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Prazo fatal amanhã", "TRIGGER:-PT15H", "END:VALARM",
+                   "END:VEVENT"]
+    linhas.append("END:VCALENDAR")
+    return "\r\n".join(_ics_dobra(l) for l in linhas) + "\r\n"
 
 
 @app.get("/<path:arquivo>")
@@ -134,7 +191,11 @@ def montar_dados(hoje: date | None = None) -> dict:
 @exige_login
 def dados():
     d = montar_dados()
-    d["vapid_publica"] = config.carregar()["vapid_publica"]
+    cfg = config.carregar()
+    d["vapid_publica"] = cfg["vapid_publica"]
+    base = cfg.get("url_app") or request.host_url.rstrip("/")
+    d["calendario_url"] = f"{base}/cal/{cfg['calendario_token']}.ics"
+    d["ia_ativa"] = bool(armazenamento.ler_json(dados_mod.IA, {})) or ia_mod.ativa()
     return jsonify(d)
 
 
@@ -236,3 +297,27 @@ def trocar_codigo():
     config.salvar(cfg)
     session["v"] = cfg["versao_sessao"]  # mantém este aparelho conectado
     return jsonify(ok=True, codigo=cfg["codigo_acesso"])
+
+
+@app.post("/api/calendario/novo")
+@exige_login
+def calendario_novo():
+    """Gera um novo endereço de calendário (o antigo deixa de funcionar)."""
+    import secrets as _s
+    cfg = config.carregar()
+    cfg["calendario_token"] = _s.token_urlsafe(24)
+    config.salvar(cfg)
+    base = cfg.get("url_app") or request.host_url.rstrip("/")
+    return jsonify(ok=True, calendario_url=f"{base}/cal/{cfg['calendario_token']}.ics")
+
+
+@app.post("/api/ia/aplicar")
+@exige_login
+def ia_aplicar():
+    """Aplica como prazo manual a sugestão da IA para uma intimação."""
+    chave = str(_corpo().get("chave", ""))
+    sug = armazenamento.ler_json(dados_mod.IA, {}).get(chave) or {}
+    if not sug.get("prazo_dias"):
+        return jsonify(erro="sem prazo sugerido para esta intimação"), 400
+    dados_mod.definir_ajuste(chave, dias=int(sug["prazo_dias"]), tipo=sug.get("tipo") or "uteis")
+    return jsonify(ok=True)

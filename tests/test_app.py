@@ -69,7 +69,8 @@ def test_inscricao_push_validada(cliente):
 
 def test_arquivos_do_app(cliente):
     c, _ = cliente
-    assert b"Prazos OAB" in c.get("/").data
+    assert b"<title>Prazos</title>" in c.get("/").data
+    assert c.get("/relatorio.html").status_code == 200
     assert c.get("/sw.js").status_code == 200
     assert c.get("/manifest.webmanifest").status_code == 200
     assert c.get("/../prazos/config.py").status_code == 404
@@ -110,3 +111,24 @@ def test_trocar_codigo_derruba_outros_aparelhos(cliente):
     assert c.get("/api/dados").status_code == 200          # este aparelho continua
     assert outro.get("/api/dados").status_code == 401      # o outro cai
     assert outro.post("/api/entrar", json={"codigo": novo}).status_code == 200
+
+
+def test_calendario_ics(cliente):
+    c, modulo = cliente
+    _logar(c, modulo)
+    url = c.get("/api/dados").get_json()["calendario_url"]
+    caminho = "/cal/" + url.split("/cal/")[1]
+    r = c.get(caminho)
+    assert r.status_code == 200 and r.mimetype == "text/calendar"
+    corpo = r.data.decode()
+    assert "BEGIN:VEVENT" in corpo and "DTSTART;VALUE=DATE:20261207" in corpo
+    assert c.get("/cal/token-errado.ics").status_code == 404
+    novo = c.post("/api/calendario/novo", json={}).get_json()["calendario_url"]
+    assert c.get(caminho).status_code == 404 and c.get("/cal/" + novo.split("/cal/")[1]).status_code == 200
+
+
+def test_dados_tem_dias_uteis(cliente):
+    c, modulo = cliente
+    _logar(c, modulo)
+    d = c.get("/api/dados").get_json()
+    assert all("uteis_restantes" in r for r in d["abertos"])

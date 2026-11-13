@@ -17,7 +17,7 @@ def ambiente(tmp_path, monkeypatch):
     monkeypatch.setattr(rodar, "INTIMACOES", tmp_path / "data/intimacoes.json")
     monkeypatch.setattr(rodar, "PAINEL", tmp_path / "PAINEL.md")
     enviados = []
-    monkeypatch.setattr(notifica, "enviar", lambda texto, titulo="", corpo=None, tag=None: enviados.append(titulo))
+    monkeypatch.setattr(notifica, "enviar", lambda texto, titulo="", corpo=None, tag=None, url="/": enviados.append(titulo))
     lote = [{"id": 1, "data_disponibilizacao": "2026-11-12", "siglaTribunal": "TJES",
              "nomeOrgao": "Vitória - Comarca da Capital - 3º Juizado Especial Criminal e Fazenda Pública",
              "tipoComunicacao": "Intimação", "texto": TEXTO_DANIELA, "numero_processo": "50417415320268080024"}]
@@ -101,3 +101,28 @@ def test_ajuste_manual_e_avulso(ambiente):
     assert [r["chave"] for r in ab][0] == k
     dados.excluir_manual(k)
     assert all(not r.get("manual") for r in dados.unificar(regs, hoje))
+
+
+def test_ia_sugestao_e_relatorio_semanal(ambiente, monkeypatch):
+    from prazos import ia
+    enviados, _, relogio, tmp = ambiente
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-teste")
+    chamadas = []
+    monkeypatch.setattr(ia, "resumir", lambda texto, partes="", orgao="": chamadas.append(partes) or {
+        "resumo": "Intima o autor para réplica.", "providencia": "Apresentar réplica.", "prazo_dias": 15,
+        "tipo": "uteis", "destinatario": "parte autora", "confianca": "media"})
+    rodar.executar()
+    assert chamadas and json.loads((tmp / "data/ia.json").read_text())
+    regs = json.loads((tmp / "data/intimacoes.json").read_text())
+    u = dados.unificar(regs, relogio["agora"].date())
+    assert u[0]["ia"]["providencia"] == "Apresentar réplica." and u[0]["uteis_restantes"] == 15
+    # segunda-feira 8h: aviso do relatório, uma vez só
+    relogio["agora"] = datetime(2026, 11, 16, 8, 30, tzinfo=rodar.TZ)
+    rodar.executar(); rodar.executar()
+    assert enviados.count("📄 Prazos da semana") == 1
+
+
+def test_ia_resposta_mal_formada_nao_quebra():
+    from prazos.ia import _extrair_json
+    d = _extrair_json('Claro! {"resumo": "x", "providencia": "y", "prazo_dias": 900, "tipo": "dias", "confianca": "alta"}')
+    assert d["prazo_dias"] is None and d["tipo"] is None and d["destinatario"] == ""

@@ -7,13 +7,14 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from . import armazenamento
-from .calendario import prazo_corridos, prazo_por_disponibilizacao
+from .calendario import dias_uteis_ate, prazo_corridos, prazo_por_disponibilizacao
 
 TZ = ZoneInfo("America/Sao_Paulo")
 STATUS = "data/status.json"      # {chave: {"cumprido": iso}}
 AJUSTES = "data/ajustes.json"    # {chave: {"dias": n, "tipo": "uteis"|"corridos"} | {"fatal": iso}}
 NOTAS = "data/notas.json"        # {chave: texto}
 MANUAIS = "data/manuais.json"    # [ {chave, processo, partes, orgao, descricao, fatal, criado} ]
+IA = "data/ia.json"              # {chave: {resumo, providencia, prazo_dias, tipo, destinatario, confianca}}
 
 
 def comarca_de(orgao: str) -> str:
@@ -57,6 +58,7 @@ def unificar(regs: list[dict], hoje: date | None = None) -> list[dict]:
     ajustes = armazenamento.ler_json(AJUSTES, {})
     notas = armazenamento.ler_json(NOTAS, {})
     manuais = armazenamento.ler_json(MANUAIS, [])
+    ia = armazenamento.ler_json(IA, {})
 
     vistos, out = set(), []
     for r in sorted(regs, key=lambda r: r.get("disponibilizacao", ""), reverse=True):
@@ -76,8 +78,11 @@ def unificar(regs: list[dict], hoje: date | None = None) -> list[dict]:
     for r in out:
         r["cumprido"] = status.get(r["chave"], {}).get("cumprido")
         r["nota"] = notas.get(r["chave"], "")
+        r["ia"] = ia.get(r["chave"])
         if r.get("fatal"):
-            r["dias_restantes"] = (date.fromisoformat(r["fatal"]) - hoje).days
+            fatal = date.fromisoformat(r["fatal"])
+            r["dias_restantes"] = (fatal - hoje).days
+            r["uteis_restantes"] = dias_uteis_ate(hoje, fatal, comarca_de(r.get("orgao", "")))
     return out
 
 

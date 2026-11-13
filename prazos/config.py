@@ -42,6 +42,9 @@ def carregar() -> dict:
     if not cfg.get("vapid_privada_pem"):
         cfg["vapid_privada_pem"], cfg["vapid_publica"] = _vapid()
         mudou = True
+    if not cfg.get("calendario_token"):
+        cfg["calendario_token"] = secrets.token_urlsafe(24)
+        mudou = True
     if mudou:
         armazenamento.gravar_json(CAMINHO, cfg)
     return cfg

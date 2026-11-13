@@ -36,6 +36,24 @@ No iPhone, as notificações exigem que o app esteja adicionado à Tela de Iníc
 - **Vigia** (`.github/workflows/vigia.yml`): a cada 3 horas o GitHub consulta `/api/saude`. Se a última consulta ao DJEN tiver mais de 3 horas, abre uma issue e o GitHub avisa por e-mail. Ativo.
 - **Implantação automática:** depois que os testes passam, cada envio à branch `main` é implantado no Google Cloud, por federação de identidade, sem chaves. Ativa; só reimplanta quando mudam `prazos/`, `app/`, `Dockerfile` ou `requirements-cloud.txt`.
 
+## Versão de 13/11/2026 (tarde): redesenho
+
+- **Abas inferiores:** Prazos, Calendário, Histórico e Ajustes, com botão **+** para cadastrar prazo avulso.
+- **Tela Prazos:** destaque do próximo prazo e grupos Esta semana, Próxima semana, Depois e A conferir. Mostra os **dias úteis** restantes e o dia da semana.
+- **Cartões:**
+  - faixa de urgência na lateral;
+  - nome das partes;
+  - botão para copiar o número do processo;
+  - trecho do prazo destacado no teor;
+  - deslizar para a direita marca como cumprido (com "Desfazer").
+- **Calendário mensal** com marcadores nos dias de fatal.
+- **Sem internet:** o app abre e mostra os últimos dados salvos.
+- **Feed de calendário** `/cal/<token>.ics` para o Google Agenda e o iPhone. O token é secreto e pode ser trocado em Ajustes.
+- **Relatório** `/relatorio.html` com os próximos 14 dias, pronto para imprimir ou salvar em PDF. Toda segunda às 8h chega um aviso.
+- **Leitura por IA** (`prazos/ia.py`): ativada com `bash ativar_ia.sh ID_DO_PROJETO`, que guarda a chave no Secret Manager.
+  - Cada intimação ganha resumo, providência e prazo sugerido.
+  - A sugestão nunca altera o prazo sozinha: aplica-se com um toque.
+
 ## Como funciona
 
 - O Cloud Scheduler dispara `python -m prazos.rodar` de hora em hora.

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Prazos OAB</title>
-<meta name="theme-color" content="#1f3a5f">
+<title>Prazos</title>
+<meta name="theme-color" content="#16233a">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icone-192.png">
 <link rel="apple-touch-icon" href="/icone-180.png">
@@ -13,128 +13,237 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
   :root {
-    --bg: #f4f5f7; --card: #fff; --txt: #1b1f24; --sub: #5d6670; --linha: #e3e6ea;
-    --marca: #1f3a5f; --verm: #b42318; --verm-bg: #fdecea; --amar: #8a5a00; --amar-bg: #fff4dc;
-    --verde: #1e7a46; --verde-bg: #e6f4ec; --azul-bg: #e8eef6;
+    --bg: #f5f4f0; --card: #ffffff; --txt: #17202b; --sub: #66707b; --linha: #e6e3dc; --suave: #f0eee8;
+    --marca: #16233a; --marca2: #2b4a75; --ouro: #b0843a;
+    --verm: #c0392b; --verm-bg: #fbe9e6; --amar: #a76a00; --amar-bg: #fdf1d8;
+    --verde: #2e7d4f; --verde-bg: #e4f2ea; --azul-bg: #e9eef6; --ia-bg: #f2eefb; --ia: #5b3fa6;
+    --sombra: 0 1px 2px rgba(23,32,43,.04), 0 4px 14px rgba(23,32,43,.06);
+    --nav: 64px;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #121417; --card: #1c1f24; --txt: #eceff3; --sub: #9aa3ad; --linha: #2c3138;
-      --marca: #8fb3e0; --verm: #ff8a80; --verm-bg: #3a1d1b; --amar: #ffcc66; --amar-bg: #3a2e14;
-      --verde: #7fd6a0; --verde-bg: #183326; --azul-bg: #1e2a3a; }
+    :root { --bg: #0f1216; --card: #181c22; --txt: #e9ecf0; --sub: #98a2ae; --linha: #262b33; --suave: #1f242b;
+      --marca: #0b1320; --marca2: #8fb3e0; --ouro: #d6a85a;
+      --verm: #ff8a7a; --verm-bg: #3a1e1a; --amar: #ffc966; --amar-bg: #352a12;
+      --verde: #7fd6a0; --verde-bg: #15301f; --azul-bg: #1b2534; --ia-bg: #231d36; --ia: #c3b1ff;
+      --sombra: none; }
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg); color: var(--txt); padding-bottom: env(safe-area-inset-bottom); }
-  header { background: var(--marca); color: #fff; padding: calc(14px + env(safe-area-inset-top)) 18px 14px;
-    position: sticky; top: 0; z-index: 5; }
-  @media (prefers-color-scheme: dark) { header { background: #1c2b40; } }
-  header h1 { margin: 0; font-size: 20px; font-weight: 650; }
-  header .st { font-size: 13px; opacity: .85; margin-top: 2px; }
-  main { max-width: 680px; margin: 0 auto; padding: 14px; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--sub);
-    margin: 22px 4px 8px; font-weight: 650; }
-  .card { background: var(--card); border: 1px solid var(--linha); border-radius: 14px;
-    padding: 14px; margin-bottom: 10px; }
-  .topo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-  .fatal { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .pill { font-size: 12px; font-weight: 650; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
-  .p-verm { background: var(--verm-bg); color: var(--verm); }
-  .p-amar { background: var(--amar-bg); color: var(--amar); }
-  .p-verde { background: var(--verde-bg); color: var(--verde); }
-  .p-azul { background: var(--azul-bg); color: var(--marca); }
-  .partes { font-weight: 650; margin-top: 6px; }
-  .proc { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--sub); }
-  .orgao, .obs { font-size: 14px; color: var(--sub); }
-  .obs { margin-top: 4px; }
-  .nota { margin-top: 8px; font-size: 14px; background: var(--azul-bg); border-radius: 8px; padding: 8px 10px;
-    white-space: pre-wrap; }
-  details { margin-top: 10px; }
-  summary { cursor: pointer; color: var(--marca); font-size: 14px; font-weight: 600; }
-  .teor { font-size: 14px; white-space: pre-wrap; margin-top: 8px; max-height: 320px; overflow: auto;
-    border-left: 3px solid var(--linha); padding-left: 10px; }
-  .contagem { font-size: 13px; color: var(--sub); margin-top: 8px; }
-  .acoes { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  button, .btn { font: inherit; font-size: 14px; font-weight: 600; border-radius: 10px; padding: 9px 14px;
-    border: 1px solid var(--linha); background: var(--card); color: var(--txt); cursor: pointer;
-    text-decoration: none; display: inline-block; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--txt); }
+  body { font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    padding-bottom: calc(var(--nav) + env(safe-area-inset-bottom) + 12px); }
+  .num { font-variant-numeric: tabular-nums; }
+  header.topo { position: sticky; top: 0; z-index: 10; background: var(--marca); color: #fff;
+    padding: calc(12px + env(safe-area-inset-top)) 18px 14px; }
+  .topo .ola { font-size: 13px; opacity: .7; }
+  .topo h1 { margin: 2px 0 0; font-size: 24px; font-weight: 700; letter-spacing: -.01em; }
+  .topo .linha { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+  .estado { font-size: 12px; padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.12); white-space: nowrap; }
+  .estado.ruim { background: #c0392b; }
+  main { max-width: 680px; margin: 0 auto; padding: 14px 14px 84px; }
+  .vista { display: none; } .vista.ativa { display: block; }
+  h2.grupo { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--sub);
+    margin: 22px 4px 10px; font-weight: 700; display: flex; justify-content: space-between; }
+  h2.grupo span.cont { font-weight: 600; }
+
+  /* Destaque do próximo prazo */
+  .hero { background: linear-gradient(135deg, var(--marca) 0%, #22385c 100%); color: #fff; border-radius: 20px;
+    padding: 18px 18px 16px; box-shadow: var(--sombra); position: relative; overflow: hidden; }
+  @media (prefers-color-scheme: dark) { .hero { background: linear-gradient(135deg, #1b2a44 0%, #24395d 100%); } }
+  .hero .rot { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; opacity: .7; }
+  .hero .data { font-size: 30px; font-weight: 750; margin-top: 4px; letter-spacing: -.02em; }
+  .hero .falta { display: inline-block; margin-top: 6px; font-weight: 650; font-size: 14px; color: #1b1b1b;
+    background: var(--ouro); padding: 4px 10px; border-radius: 99px; }
+  .hero .quem { margin-top: 12px; font-weight: 650; font-size: 16px; }
+  .hero .onde { font-size: 13px; opacity: .75; }
+  .hero::after { content: "§"; position: absolute; right: 14px; top: -8px; font-size: 120px; opacity: .06; font-weight: 800; }
+
+  /* Cartões */
+  .card { background: var(--card); border-radius: 16px; box-shadow: var(--sombra); margin-bottom: 10px;
+    position: relative; overflow: hidden; border: 1px solid var(--linha); touch-action: pan-y; }
+  .card .faixa { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--linha); }
+  .card.u-verm .faixa { background: var(--verm); } .card.u-amar .faixa { background: var(--amar); }
+  .card.u-verde .faixa { background: var(--verde); } .card.u-azul .faixa { background: var(--marca2); }
+  .card .dentro { padding: 14px 14px 12px 19px; background: var(--card); position: relative; z-index: 1;
+    transition: transform .2s ease; }
+  .card .fundo-swipe { position: absolute; inset: 0; background: var(--verde); color: #fff; display: flex;
+    align-items: center; padding-left: 22px; font-weight: 700; }
+  .linha1 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .quando { font-size: 19px; font-weight: 750; letter-spacing: -.01em; }
+  .quando small { font-size: 13px; color: var(--sub); font-weight: 600; margin-left: 4px; }
+  .chip { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+  .c-verm { background: var(--verm-bg); color: var(--verm); } .c-amar { background: var(--amar-bg); color: var(--amar); }
+  .c-verde { background: var(--verde-bg); color: var(--verde); } .c-azul { background: var(--azul-bg); color: var(--marca2); }
+  .partes { font-weight: 650; margin-top: 6px; font-size: 16px; }
+  .meta { font-size: 13px; color: var(--sub); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .copiar { border: 0; background: var(--suave); color: var(--sub); font-size: 11px; font-weight: 700; padding: 3px 8px;
+    border-radius: 6px; cursor: pointer; }
+  .obs { font-size: 13px; color: var(--sub); margin-top: 6px; }
+  .ia { margin-top: 10px; background: var(--ia-bg); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+  .ia .tit { color: var(--ia); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .ia .sug { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ia); font-weight: 600; font-size: 13px; }
+  .nota { margin-top: 10px; font-size: 14px; background: var(--azul-bg); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; }
+  details.teor { margin-top: 10px; }
+  details.teor summary { cursor: pointer; color: var(--marca2); font-size: 13px; font-weight: 700; list-style: none; }
+  details.teor summary::-webkit-details-marker { display: none; }
+  details.teor summary::before { content: "▸ "; } details.teor[open] summary::before { content: "▾ "; }
+  .contagem { font-size: 12px; color: var(--sub); margin-top: 8px; background: var(--suave); padding: 8px 10px; border-radius: 8px; }
+  .texto { font-size: 14px; white-space: pre-wrap; margin-top: 8px; max-height: 340px; overflow: auto; line-height: 1.5; }
+  mark { background: #ffe58a; color: #1b1b1b; border-radius: 3px; padding: 0 2px; }
+  .acoes { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  button, .btn { font: inherit; font-size: 14px; font-weight: 650; border-radius: 10px; padding: 8px 13px;
+    border: 1px solid var(--linha); background: var(--card); color: var(--txt); cursor: pointer; text-decoration: none; display: inline-block; }
   .prim { background: var(--marca); color: #fff; border-color: var(--marca); }
-  @media (prefers-color-scheme: dark) { .prim { color: #10151c; } }
+  @media (prefers-color-scheme: dark) { .prim { background: var(--marca2); border-color: var(--marca2); color: #0f1216; } }
+  .leve { border: 0; background: var(--suave); }
   .perigo { color: var(--verm); }
-  input, select, textarea { font: inherit; font-size: 16px; padding: 9px 10px; border-radius: 10px;
-    border: 1px solid var(--linha); background: var(--card); color: var(--txt); width: 100%; }
+  .check { position: absolute; right: 12px; top: 12px; width: 30px; height: 30px; border-radius: 50%; padding: 0;
+    border: 2px solid var(--linha); background: var(--card); color: var(--verde); font-size: 16px; line-height: 1; z-index: 2; }
+  .card .linha1 { padding-right: 38px; }
+  .form { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--linha); }
+  input, select, textarea { font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--linha);
+    background: var(--card); color: var(--txt); width: 100%; }
   textarea { min-height: 80px; resize: vertical; }
-  label { font-size: 13px; color: var(--sub); display: block; margin: 10px 0 4px; }
-  .form { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--linha); }
-  .linha2 { display: flex; gap: 8px; } .linha2 > * { flex: 1; }
-  .abas { display: flex; gap: 6px; margin: 4px 0 6px; }
-  .abas button { flex: 1; padding: 8px 6px; }
-  .abas button.ativa { background: var(--marca); color: #fff; border-color: var(--marca); }
-  @media (prefers-color-scheme: dark) { .abas button.ativa { color: #10151c; } }
-  .vazio { color: var(--sub); font-size: 15px; padding: 6px 4px; }
-  .aviso { background: var(--amar-bg); color: var(--amar); border-radius: 12px; padding: 12px 14px;
-    font-size: 14px; margin-bottom: 10px; }
+  label { font-size: 12px; color: var(--sub); display: block; margin: 12px 0 5px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; }
+  .duas { display: flex; gap: 8px; } .duas > * { flex: 1; }
+  .vazio { text-align: center; color: var(--sub); padding: 26px 16px; font-size: 15px; }
+  .vazio .ico { font-size: 34px; display: block; margin-bottom: 6px; }
+  .aviso { border-radius: 14px; padding: 12px 14px; font-size: 14px; margin-bottom: 10px; background: var(--amar-bg); color: var(--amar); }
   .aviso.erro { background: var(--verm-bg); color: var(--verm); }
-  #login { max-width: 380px; margin: 12vh auto 0; padding: 0 18px; }
-  #login input { font-size: 20px; letter-spacing: .08em; text-transform: uppercase; margin: 12px 0; text-align: center; }
-  #login .prim { width: 100%; padding: 12px; font-size: 16px; }
-  .msg { min-height: 1.4em; color: var(--verm); font-size: 14px; margin-top: 8px; text-align: center; }
-  footer { color: var(--sub); font-size: 12px; text-align: center; padding: 20px 14px 30px; }
-  footer button { margin: 4px; }
+
+  /* Calendário */
+  .cal { background: var(--card); border-radius: 18px; padding: 12px; box-shadow: var(--sombra); border: 1px solid var(--linha); }
+  .cal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .cal-top b { font-size: 17px; text-transform: capitalize; }
+  .cal-top button { border: 0; background: var(--suave); width: 36px; height: 36px; padding: 0; font-size: 18px; }
+  .grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+  .grade .sem { font-size: 11px; color: var(--sub); font-weight: 700; padding: 4px 0; }
+  .dia { padding: 7px 0 9px; border-radius: 10px; font-size: 15px; cursor: pointer; position: relative; font-variant-numeric: tabular-nums; }
+  .dia.fora { opacity: .3; } .dia.fds { color: var(--sub); }
+  .dia.hoje { outline: 2px solid var(--marca2); outline-offset: -2px; font-weight: 700; }
+  .dia.sel { background: var(--marca); color: #fff; }
+  .dia .pts { position: absolute; left: 0; right: 0; bottom: 3px; display: flex; justify-content: center; gap: 2px; }
+  .dia .pts i { width: 5px; height: 5px; border-radius: 50%; background: var(--verde); display: block; }
+  .dia .pts i.verm { background: var(--verm); } .dia .pts i.amar { background: var(--amar); } .dia .pts i.ok { background: var(--sub); opacity: .5; }
+
+  /* Histórico */
+  .chips { display: flex; gap: 6px; overflow-x: auto; margin: 10px 0 4px; padding-bottom: 2px; }
+  .chips button { border-radius: 99px; padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+  .chips button.on { background: var(--marca); color: #fff; border-color: var(--marca); }
+  @media (prefers-color-scheme: dark) { .chips button.on { background: var(--marca2); color: #0f1216; } }
+
+  /* Ajustes */
+  .bloco { background: var(--card); border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; border: 1px solid var(--linha); box-shadow: var(--sombra); }
+  .bloco h3 { margin: 0 0 4px; font-size: 16px; }
+  .bloco p { margin: 4px 0 10px; font-size: 14px; color: var(--sub); }
+
+  /* Navegação inferior, botão +, avisos */
+  nav.abas { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: color-mix(in srgb, var(--card) 92%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--linha);
+    display: flex; padding-bottom: env(safe-area-inset-bottom); }
+  nav.abas button { flex: 1; border: 0; background: none; border-radius: 0; padding: 8px 0 7px; color: var(--sub);
+    display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; font-weight: 650; height: var(--nav); justify-content: center; }
+  nav.abas button svg { width: 24px; height: 24px; }
+  nav.abas button.on { color: var(--marca2); }
+  @media (prefers-color-scheme: light) { nav.abas button.on { color: var(--marca); } }
+  .fab { position: fixed; right: 18px; bottom: calc(var(--nav) + env(safe-area-inset-bottom) + 16px); z-index: 21;
+    width: 56px; height: 56px; border-radius: 18px; background: var(--ouro); color: #1b1b1b; border: 0; font-size: 30px;
+    line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,.2); padding: 0; }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%) translateY(20px); bottom: calc(var(--nav) + env(safe-area-inset-bottom) + 18px);
+    background: #222; color: #fff; padding: 11px 14px; border-radius: 12px; font-size: 14px; z-index: 30; opacity: 0;
+    transition: all .2s; display: flex; gap: 14px; align-items: center; max-width: 92vw; pointer-events: none; }
+  .toast.on { opacity: 1; transform: translateX(-50%); pointer-events: auto; }
+  .toast button { background: none; border: 0; color: #ffd27a; padding: 0; font-weight: 700; }
+  .folha-fundo { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 40; display: none; }
+  .folha { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; background: var(--card); border-radius: 22px 22px 0 0;
+    padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); max-height: 88vh; overflow: auto; transform: translateY(100%); transition: transform .25s, visibility .25s; visibility: hidden; }
+  .folha.on { transform: none; visibility: visible; } .folha-fundo.on { display: block; }
+  .folha .puxador { width: 40px; height: 5px; border-radius: 3px; background: var(--linha); margin: 0 auto 10px; }
+  .folha h3 { margin: 4px 0 2px; }
+
+  /* Esqueleto de carregamento */
+  .esq { background: linear-gradient(90deg, var(--suave) 25%, var(--linha) 50%, var(--suave) 75%); background-size: 200% 100%;
+    animation: brilho 1.2s infinite; border-radius: 16px; margin-bottom: 10px; }
+  @keyframes brilho { to { background-position: -200% 0; } }
+
+  #login { max-width: 380px; margin: 14vh auto 0; padding: 0 22px; text-align: center; }
+  #login .logo { width: 72px; height: 72px; border-radius: 18px; }
+  #login h1 { font-size: 26px; margin: 14px 0 4px; }
+  #login input { font-size: 20px; letter-spacing: .08em; text-transform: uppercase; margin: 18px 0 10px; text-align: center; }
+  #login .prim { width: 100%; padding: 13px; font-size: 16px; }
+  .msg { min-height: 1.4em; color: var(--verm); font-size: 14px; margin-top: 10px; }
   .oculto { display: none !important; }
 </style>
 </head>
 <body>
 
 <section id="login" class="oculto">
-  <h1 style="font-size:22px;margin:0 0 4px">Prazos OAB</h1>
-  <div class="orgao">Digite o código de acesso exibido no Cloud Shell.</div>
+  <img class="logo" src="/icone-192.png" alt="">
+  <h1>Prazos</h1>
+  <div class="obs">Digite o código de acesso exibido no Cloud Shell.</div>
   <input id="codigo" autocomplete="one-time-code" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX-XXXX">
   <button class="prim" id="entrar">Entrar</button>
   <div class="msg" id="msgLogin"></div>
 </section>
 
 <div id="appView" class="oculto">
-  <header>
-    <h1>Prazos — OAB/ES 43.793</h1>
-    <div class="st" id="status">Carregando…</div>
+  <header class="topo">
+    <div class="linha">
+      <div><div class="ola" id="ola">Olá, Henrique</div><h1 id="titulo">Prazos</h1></div>
+      <div class="estado" id="estado">…</div>
+    </div>
   </header>
   <main>
     <div id="avisos"></div>
-    <input id="busca" type="search" placeholder="Buscar por processo, parte, vara, texto ou nota">
-    <div class="abas" style="margin-top:10px">
-      <button data-aba="pendentes" class="ativa">Pendentes</button>
-      <button data-aba="historico">Histórico</button>
-      <button data-aba="cumpridos">Cumpridos</button>
-    </div>
-    <div id="conteudo"></div>
-    <div class="card" style="margin-top:18px">
-      <details id="novoAvulso"><summary>+ Cadastrar prazo avulso (ex.: expediente só do PJe)</summary>
-        <div class="form">
-          <label>Processo</label><input id="avProc" placeholder="0000000-00.0000.8.08.0000">
-          <label>Partes (opcional)</label><input id="avPartes" placeholder="Autor x Réu">
-          <label>Vara/órgão (opcional)</label><input id="avOrgao">
-          <label>O que fazer</label><textarea id="avDesc" placeholder="Ex.: manifestar sobre laudo pericial"></textarea>
-          <label>Data fatal</label><input id="avFatal" type="date">
-          <div class="acoes"><button class="prim" id="avSalvar">Cadastrar</button></div>
-        </div>
-      </details>
-    </div>
+    <section class="vista ativa" id="v-prazos"><div class="esq" style="height:150px"></div><div class="esq" style="height:120px"></div><div class="esq" style="height:120px"></div></section>
+    <section class="vista" id="v-calendario"></section>
+    <section class="vista" id="v-historico">
+      <input id="busca" type="search" placeholder="Buscar processo, parte, vara, texto ou nota">
+      <div class="chips" id="filtros">
+        <button data-f="todos" class="on">Todos</button><button data-f="prazo">Com prazo</button>
+        <button data-f="conferir">A conferir</button><button data-f="cumpridos">Cumpridos</button><button data-f="avulsos">Avulsos</button>
+      </div>
+      <div id="listaHist"></div>
+    </section>
+    <section class="vista" id="v-ajustes"></section>
   </main>
-  <footer>
-    Cálculo conservador a partir do DJEN. Confira sempre no PJe.<br>
-    Expedientes intimados só pelo sistema PJe não aparecem sozinhos: cadastre como prazo avulso.<br><br>
-    <button id="testarPush">Testar notificação</button>
-    <button id="trocarCodigo">Trocar código e sair dos outros aparelhos</button>
-    <button id="sair">Sair deste aparelho</button>
-  </footer>
+
+  <button class="fab" id="fab" aria-label="Cadastrar prazo avulso">+</button>
+  <nav class="abas">
+    <button data-v="prazos" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Prazos</button>
+    <button data-v="calendario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendário</button>
+    <button data-v="historico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Histórico</button>
+    <button data-v="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
+  </nav>
+  <div class="toast" id="toast"><span id="toastTxt"></span><button id="toastBtn"></button></div>
+
+  <div class="folha-fundo" id="folhaFundo"></div>
+  <div class="folha" id="folha">
+    <div class="puxador"></div>
+    <h3>Novo prazo avulso</h3>
+    <div class="obs">Para expedientes que saíram só no PJe ou prazos que você quer controlar.</div>
+    <label>Processo</label><input id="avProc" inputmode="numeric" placeholder="0000000-00.0000.8.08.0000">
+    <label>Partes</label><input id="avPartes" placeholder="Autor x Réu">
+    <label>Vara / órgão</label><input id="avOrgao" placeholder="Opcional">
+    <label>O que fazer</label><textarea id="avDesc" placeholder="Ex.: manifestar sobre o laudo pericial"></textarea>
+    <label>Data fatal</label><input id="avFatal" type="date">
+    <div class="acoes" style="margin-top:16px"><button class="prim" id="avSalvar" style="flex:1">Cadastrar</button><button id="avCancelar">Cancelar</button></div>
+  </div>
 </div>
 
 <script>
-const $ = (s) => document.querySelector(s);
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SEM = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const dt = (iso) => { const [a, m, d] = iso.slice(0, 10).split("-").map(Number); return new Date(a, m - 1, d); };
 const br = (iso) => iso ? iso.slice(0,10).split("-").reverse().join("/") : "—";
-let dados = null, aba = "pendentes", porChave = {};
+const curta = (iso) => { const d = dt(iso); return `${SEM[d.getDay()]}, ${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`; };
+const isoDe = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+let dados = null, vista = "prazos", filtro = "todos", porChave = {}, offline = false;
+let calMes = null, calSel = null;
 
+// ---------- API e sessão ----------
 async function api(caminho, corpo) {
   const r = await fetch(caminho, corpo === undefined ? {credentials: "same-origin"} :
     {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json"}, body: JSON.stringify(corpo)});
@@ -142,7 +251,6 @@ async function api(caminho, corpo) {
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erro || ("HTTP " + r.status));
   return r.json();
 }
-
 function mostrarLogin() { $("#appView").classList.add("oculto"); $("#login").classList.remove("oculto"); }
 function mostrarApp() { $("#login").classList.add("oculto"); $("#appView").classList.remove("oculto"); }
 
@@ -156,212 +264,345 @@ $("#entrar").onclick = async () => {
   } catch (e) { $("#msgLogin").textContent = "Sem conexão. Tente de novo."; }
 };
 $("#codigo").addEventListener("keydown", e => { if (e.key === "Enter") $("#entrar").click(); });
-$("#sair").onclick = async () => { await fetch("/api/sair", {method: "POST", credentials: "same-origin"}); mostrarLogin(); };
-$("#trocarCodigo").onclick = async () => {
-  if (!confirm("Gerar um novo código? Todos os outros aparelhos serão desconectados e precisarão do código novo.")) return;
-  try { const r = await api("/api/trocar-codigo", {}); alert("Novo código de acesso (anote):\n\n" + r.codigo); }
-  catch (e) { alert("Falha: " + e.message); }
-};
-$("#testarPush").onclick = () => testarNotificacao();
-$("#busca").addEventListener("input", () => render());
-document.querySelectorAll(".abas button").forEach(b => b.onclick = () => {
-  aba = b.dataset.aba;
-  document.querySelectorAll(".abas button").forEach(x => x.classList.toggle("ativa", x === b));
-  render();
-});
 
-function pilula(r) {
-  const d = r.dias_restantes;
-  if (d === undefined || d === null) return "";
-  if (d < 0) return '<span class="pill p-azul">vencido</span>';
-  if (d === 0) return '<span class="pill p-verm">vence hoje</span>';
-  if (d <= 3) return `<span class="pill p-verm">${d} dia${d>1?"s":""}</span>`;
-  if (d <= 7) return `<span class="pill p-amar">${d} dias</span>`;
-  return `<span class="pill p-verde">${d} dias</span>`;
+// ---------- Avisos rápidos ----------
+let toastTimer = null;
+function toast(txt, acao, fn) {
+  $("#toastTxt").textContent = txt;
+  const b = $("#toastBtn"); b.textContent = acao || ""; b.onclick = () => { esconderToast(); fn && fn(); };
+  $("#toast").classList.add("on"); clearTimeout(toastTimer); toastTimer = setTimeout(esconderToast, acao ? 6000 : 3000);
+}
+function esconderToast() { $("#toast").classList.remove("on"); }
+
+// ---------- Navegação ----------
+const TITULOS = {prazos: "Prazos", calendario: "Calendário", historico: "Histórico", ajustes: "Ajustes"};
+$$("nav.abas button").forEach(b => b.onclick = () => irPara(b.dataset.v));
+function irPara(v) {
+  vista = v;
+  $$("nav.abas button").forEach(x => x.classList.toggle("on", x.dataset.v === v));
+  $$(".vista").forEach(x => x.classList.toggle("ativa", x.id === "v-" + v));
+  $("#titulo").textContent = TITULOS[v];
+  $("#fab").classList.toggle("oculto", !(v === "prazos" || v === "calendario"));
+  window.scrollTo(0, 0);
+  render();
 }
 
+// ---------- Cartões ----------
+function urg(r) {
+  if (r.cumprido) return "azul";
+  const u = r.uteis_restantes;
+  if (u === undefined || u === null || !r.fatal) return "azul";
+  if (u <= 2) return "verm"; if (u <= 5) return "amar"; return "verde";
+}
+function chipPrazo(r) {
+  if (!r.fatal) return `<span class="chip c-azul">${r.manual ? "avulso" : "conferir"}</span>`;
+  if (r.cumprido) return `<span class="chip c-azul">cumprido</span>`;
+  const u = r.uteis_restantes, d = r.dias_restantes;
+  if (d < 0) return `<span class="chip c-azul">vencido</span>`;
+  if (d === 0) return `<span class="chip c-verm">vence hoje</span>`;
+  const c = {verm: "c-verm", amar: "c-amar", verde: "c-verde"}[urg(r)];
+  return `<span class="chip ${c}">${u} ${u === 1 ? "dia útil" : "dias úteis"}</span>`;
+}
+function destacarPrazo(texto) {
+  let t = esc(texto);
+  return t.replace(/(prazo\s+(?:comum\s+)?(?:de\s+)?[^.;]{0,40}?(?:dias|horas)(?:\s+(?:úteis|corridos))?|prazo legal)/gi, "<mark>$1</mark>");
+}
+function blocoIA(r) {
+  if (!r.ia) return "";
+  const s = r.ia;
+  const sugere = s.prazo_dias && !(r.ajustado) && (s.prazo_dias !== r.prazo_dias || (s.tipo || "uteis") !== (r.prazo_tipo || "uteis") || !r.fatal);
+  return `<div class="ia"><div class="tit">✨ Leitura por IA</div>
+    <div>${esc(s.resumo)}</div><div style="margin-top:4px"><b>Providência:</b> ${esc(s.providencia)}</div>
+    ${sugere ? `<div class="sug"><span>Sugere ${s.prazo_dias} dias ${s.tipo === "corridos" ? "corridos" : "úteis"} (confiança ${esc(s.confianca)})</span>
+      <button class="leve" data-acao="aplicar-ia" data-chave="${esc(r.chave)}">Aplicar</button></div>` : ""}</div>`;
+}
 function cartao(r) {
   porChave[r.chave] = r;
-  const alt = r.fatal_alternativo ? ` <span class="orgao">(ou ${br(r.fatal_alternativo)})</span>` : "";
-  const cab = r.fatal
-    ? `<div class="topo"><div class="fatal">${br(r.fatal)}${alt}</div>${pilula(r)}</div>`
-    : `<div class="topo"><div class="orgao">${r.manual ? "Prazo avulso" : "Disponibilizada em " + br(r.disponibilizacao)}</div>
-       <span class="pill p-azul">${esc(r.tipo || "Comunicação")}</span></div>`;
   const k = esc(r.chave);
-  const botaoCumprir = r.cumprido
-    ? `<button data-acao="desfazer" data-chave="${k}">Desfazer cumprido</button>`
-    : `<button class="prim" data-acao="cumprir" data-chave="${k}">Marcar cumprido</button>`;
+  const quando = r.fatal ? `<div class="quando num">${curta(r.fatal)}<small>${dt(r.fatal).getFullYear()}</small></div>`
+    : `<div class="quando" style="font-size:15px;color:var(--sub)">${r.manual ? "Prazo avulso" : "Publicada " + (r.disponibilizacao ? br(r.disponibilizacao) : "")}</div>`;
   const pje = r.link && /^https:\/\/[a-z0-9.-]+\.jus\.br\//i.test(r.link)
-    ? `<a class="btn" href="${esc(r.link)}" target="_blank" rel="noopener">Abrir documento</a>` : "";
-  const botaoPrazo = r.manual ? `<button class="perigo" data-acao="excluir" data-chave="${k}">Excluir</button>`
-    : `<button data-acao="form-prazo" data-chave="${k}">${r.ajustado ? "Alterar prazo" : "Definir prazo"}</button>`;
-  return `<div class="card" id="c-${k}">${cab}
-    ${r.partes ? `<div class="partes">${esc(r.partes)}</div>` : ""}
-    <div class="proc">${esc(r.processo)}</div>
-    <div class="orgao">${esc(r.orgao)}</div>
-    <div class="obs">${esc(r.prazo_obs)}</div>
-    ${r.nota ? `<div class="nota">📝 ${esc(r.nota)}</div>` : ""}
-    <details><summary>Teor e contagem</summary>
-      ${r.contagem ? `<div class="contagem">${esc(r.contagem)}</div>` : ""}
-      <div class="teor">${esc(r.texto)}</div>
-    </details>
-    <div class="acoes">${botaoCumprir}${botaoPrazo}<button data-acao="form-nota" data-chave="${k}">Nota</button>${pje}</div>
-    <div class="formslot"></div></div>`;
+    ? `<a class="btn leve" href="${esc(r.link)}" target="_blank" rel="noopener">Abrir no PJe</a>` : "";
+  const botaoPrazo = r.manual ? `<button class="leve perigo" data-acao="excluir" data-chave="${k}">Excluir</button>`
+    : `<button class="leve" data-acao="form-prazo" data-chave="${k}">${r.ajustado ? "Alterar prazo" : "Definir prazo"}</button>`;
+  return `<div class="card u-${urg(r)}" data-chave="${k}" ${r.cumprido ? "" : "data-swipe"}>
+    <div class="fundo-swipe">✓ Cumprido</div>
+    <div class="dentro"><span class="faixa"></span>
+      <button class="check" title="${r.cumprido ? "Desfazer cumprido" : "Marcar cumprido"}" data-acao="${r.cumprido ? "desfazer" : "cumprir"}" data-chave="${k}">${r.cumprido ? "↺" : "✓"}</button>
+      <div class="linha1">${quando}${chipPrazo(r)}</div>
+      ${r.partes ? `<div class="partes">${esc(r.partes)}</div>` : ""}
+      <div class="meta num">${esc(r.processo)} <button class="copiar" data-acao="copiar" data-txt="${esc(r.processo)}">copiar</button></div>
+      <div class="meta">${esc((r.orgao || "").split(" - ").slice(-1)[0])}</div>
+      <div class="obs">${esc(r.prazo_obs)}</div>
+      ${blocoIA(r)}
+      ${r.nota ? `<div class="nota">📝 ${esc(r.nota)}</div>` : ""}
+      <details class="teor"><summary>Teor e contagem</summary>
+        ${r.contagem ? `<div class="contagem">${esc(r.contagem)}</div>` : ""}
+        <div class="texto">${destacarPrazo(r.texto)}</div>
+      </details>
+      <div class="acoes">${botaoPrazo}<button class="leve" data-acao="form-nota" data-chave="${k}">Nota</button>${pje}</div>
+      <div class="formslot"></div>
+    </div></div>`;
 }
-
 function formPrazo(r) {
   const k = esc(r.chave);
   return `<div class="form">
     <label>Prazo em dias</label>
-    <div class="linha2"><input type="number" min="1" max="365" id="fd-${k}" value="${r.prazo_dias || ""}">
+    <div class="duas"><input type="number" min="1" max="365" id="fd-${k}" value="${r.prazo_dias || ""}">
       <select id="ft-${k}"><option value="uteis">dias úteis</option><option value="corridos" ${r.prazo_tipo === "corridos" ? "selected" : ""}>dias corridos</option></select></div>
     <label>ou data fatal exata</label><input type="date" id="ff-${k}">
     <div class="acoes"><button class="prim" data-acao="salvar-prazo" data-chave="${k}">Salvar</button>
       ${r.ajustado ? `<button data-acao="limpar-prazo" data-chave="${k}">Voltar ao automático</button>` : ""}</div></div>`;
 }
-
 function formNota(r) {
   const k = esc(r.chave);
   return `<div class="form"><label>Anotação</label><textarea id="fn-${k}">${esc(r.nota)}</textarea>
     <div class="acoes"><button class="prim" data-acao="salvar-nota" data-chave="${k}">Salvar nota</button></div></div>`;
 }
+const vazio = (ico, txt) => `<div class="vazio"><span class="ico">${ico}</span>${txt}</div>`;
 
-function filtrar(lista) {
-  const q = $("#busca").value.trim().toLowerCase();
-  if (!q) return lista;
-  return lista.filter(r => [r.processo, r.partes, r.orgao, r.texto, r.nota, r.prazo_obs]
-    .some(v => (v || "").toLowerCase().includes(q)));
+// ---------- Vistas ----------
+function fimDaSemana(d) { const x = new Date(d); x.setDate(x.getDate() + (7 - x.getDay()) % 7); return x; }
+function renderPrazos() {
+  const ab = dados.abertos, hoje = dt(dados.hoje);
+  const fim1 = fimDaSemana(hoje), fim2 = new Date(fim1); fim2.setDate(fim2.getDate() + 7);
+  const g = {semana: [], proxima: [], depois: []};
+  ab.forEach(r => { const d = dt(r.fatal); (d <= fim1 ? g.semana : d <= fim2 ? g.proxima : g.depois).push(r); });
+  let html = "";
+  if (ab.length) {
+    const p = ab[0];
+    const falta = p.dias_restantes === 0 ? "vence hoje" : `faltam ${p.uteis_restantes} ${p.uteis_restantes === 1 ? "dia útil" : "dias úteis"}`;
+    html += `<div class="hero" data-ir="${esc(p.chave)}"><div class="rot">Próximo prazo</div>
+      <div class="data num">${curta(p.fatal)}</div><span class="falta">${falta}</span>
+      <div class="quem">${esc(p.partes || p.processo)}</div><div class="onde">${esc((p.orgao || "").split(" - ").slice(-1)[0])}</div></div>`;
+  } else html += vazio("🎉", "Nenhum prazo em aberto.");
+  const sec = (t, l) => l.length ? `<h2 class="grupo">${t}<span class="cont">${l.length}</span></h2>` + l.map(cartao).join("") : "";
+  html += sec("Esta semana", g.semana) + sec("Próxima semana", g.proxima) + sec("Depois", g.depois);
+  html += dados.conferir.length ? `<h2 class="grupo">A conferir<span class="cont">${dados.conferir.length}</span></h2>` + dados.conferir.map(cartao).join("") : "";
+  $("#v-prazos").innerHTML = html;
 }
-
-function secao(titulo, lista, vazio) {
-  return `<h2>${titulo}</h2>` + (lista.length ? lista.map(cartao).join("") : `<div class="vazio">${vazio}</div>`);
+function renderCalendario() {
+  const hoje = dt(dados.hoje);
+  if (!calMes) calMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  if (!calSel) calSel = dados.hoje;
+  const todos = dados.historico.filter(r => r.fatal);
+  const porDia = {};
+  todos.forEach(r => (porDia[r.fatal] = porDia[r.fatal] || []).push(r));
+  const ini = new Date(calMes); ini.setDate(1 - ((ini.getDay() + 6) % 7)); // segunda-feira
+  let grade = ["seg","ter","qua","qui","sex","sáb","dom"].map(s => `<div class="sem">${s}</div>`).join("");
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(ini); d.setDate(ini.getDate() + i);
+    const iso = isoDe(d), lista = porDia[iso] || [];
+    const pts = lista.slice(0, 3).map(r => `<i class="${r.cumprido ? "ok" : urg(r)}"></i>`).join("");
+    const cls = ["dia", d.getMonth() !== calMes.getMonth() ? "fora" : "", d.getDay() % 6 === 0 ? "fds" : "",
+                 iso === dados.hoje ? "hoje" : "", iso === calSel ? "sel" : ""].join(" ");
+    grade += `<div class="${cls}" data-dia="${iso}">${d.getDate()}<span class="pts">${pts}</span></div>`;
+  }
+  const lista = porDia[calSel] || [];
+  $("#v-calendario").innerHTML = `<div class="cal"><div class="cal-top"><button data-mes="-1">‹</button>
+      <b>${MESES[calMes.getMonth()]} ${calMes.getFullYear()}</b><button data-mes="1">›</button></div>
+      <div class="grade">${grade}</div></div>
+    <h2 class="grupo">${curta(calSel)}<span class="cont">${lista.length || ""}</span></h2>
+    ${lista.length ? lista.map(cartao).join("") : vazio("📅", "Nenhum prazo neste dia.")}`;
+}
+function renderHistorico() {
+  const q = $("#busca").value.trim().toLowerCase();
+  let l = dados.historico;
+  if (filtro === "prazo") l = l.filter(r => r.fatal && !r.cumprido);
+  if (filtro === "conferir") l = l.filter(r => !r.fatal && !r.cumprido);
+  if (filtro === "cumpridos") l = l.filter(r => r.cumprido);
+  if (filtro === "avulsos") l = l.filter(r => r.manual);
+  if (q) l = l.filter(r => [r.processo, r.partes, r.orgao, r.texto, r.nota, r.prazo_obs].some(v => (v || "").toLowerCase().includes(q)));
+  $("#listaHist").innerHTML = l.length ? `<h2 class="grupo">Resultados<span class="cont">${l.length}</span></h2>` + l.map(cartao).join("") : vazio("🔎", "Nada encontrado.");
+}
+function renderAjustes() {
+  const ult = dados.ultima_consulta ? new Date(dados.ultima_consulta).toLocaleString("pt-BR", {dateStyle: "short", timeStyle: "short"}) : "—";
+  $("#v-ajustes").innerHTML = `
+    <div class="bloco"><h3>Rotina</h3><p>Consulta o DJEN de hora em hora, pela OAB/ES 43.793 e pelo seu nome.</p>
+      <div class="meta">Última consulta: <b>${ult}</b>${dados.falhas_seguidas ? ` · <span style="color:var(--verm)">${dados.falhas_seguidas} falha(s)</span>` : ""}</div></div>
+    <div class="bloco"><h3>Notificações</h3><p>Intimações novas, lembretes 5, 2 e 0 dias antes do fatal e resumo diário às 8h.</p>
+      <div class="acoes"><button class="prim" id="ativarPush">Ativar neste aparelho</button><button id="testarPush">Testar</button></div></div>
+    <div class="bloco"><h3>Google Agenda / iPhone</h3><p>Copie o endereço abaixo. No Google Agenda (pelo computador): Outras agendas → <b>+</b> → <b>Do URL</b> → cole. No iPhone: Ajustes → Calendário → Contas → Adicionar Conta → Outra → <b>Adicionar Calendário Assinado</b>.</p>
+      <input readonly id="calUrl" value="${esc(dados.calendario_url)}" onclick="this.select()">
+      <div class="acoes"><button class="prim" data-acao="copiar" data-txt="${esc(dados.calendario_url)}">Copiar endereço</button><button id="novoCal">Gerar novo endereço</button></div>
+      <p style="font-size:12px;margin-top:8px">Quem tiver esse endereço vê seus prazos. Se vazar, gere um novo.</p></div>
+    <div class="bloco"><h3>Relatório da semana</h3><p>Prazos dos próximos 14 dias, pronto para imprimir ou salvar em PDF. Toda segunda, às 8h, chega um aviso.</p>
+      <a class="btn prim" href="/relatorio.html">Abrir relatório</a></div>
+    <div class="bloco"><h3>Leitura por IA</h3><p>${dados.ia_ativa ? "Ativa: cada intimação nova chega com resumo, providência e prazo sugerido (sugestão; você aplica com um toque)." : "Desativada. Para ativar, rode o comando <b>bash ativar_ia.sh</b> no Cloud Shell (pede sua chave da API da Anthropic)."}</p></div>
+    <div class="bloco"><h3>Segurança</h3><p>Se perder o celular, troque o código: todos os outros aparelhos são desconectados.</p>
+      <div class="acoes"><button id="trocarCodigo">Trocar código</button><button class="perigo" id="sair">Sair deste aparelho</button></div></div>
+    <p class="obs" style="text-align:center;margin:18px 0">Cálculo conservador a partir do DJEN. Confira sempre no PJe.<br>Expedientes só do PJe: cadastre como prazo avulso.</p>`;
+  $("#ativarPush").onclick = ativarPush;
+  $("#testarPush").onclick = testarPush;
+  $("#novoCal").onclick = async () => {
+    if (!confirm("Gerar novo endereço? O antigo para de funcionar e você precisará adicioná-lo de novo na agenda.")) return;
+    try { const r = await api("/api/calendario/novo", {}); dados.calendario_url = r.calendario_url; renderAjustes(); toast("Novo endereço gerado"); } catch (e) { toast("Falha: " + e.message); }
+  };
+  $("#trocarCodigo").onclick = async () => {
+    if (!confirm("Gerar um novo código? Os outros aparelhos serão desconectados.")) return;
+    try { const r = await api("/api/trocar-codigo", {}); alert("Novo código de acesso (anote):\n\n" + r.codigo); } catch (e) { toast("Falha: " + e.message); }
+  };
+  $("#sair").onclick = async () => {
+    await fetch("/api/sair", {method: "POST", credentials: "same-origin"});
+    try { await caches.delete("prazos-dados"); } catch (_) {}
+    mostrarLogin();
+  };
 }
 
 function render() {
-  const d = dados;
+  if (!dados) return;
   porChave = {};
-  const ult = d.ultima_consulta ? new Date(d.ultima_consulta) : null;
-  $("#status").textContent = ult ? `Última consulta ao DJEN: ${ult.toLocaleString("pt-BR", {dateStyle: "short", timeStyle: "short"})}` : "Aguardando a primeira consulta";
+  const ult = dados.ultima_consulta ? new Date(dados.ultima_consulta) : null;
+  const atrasada = ult && (Date.now() - ult.getTime()) > 3 * 3600 * 1000;
+  const est = $("#estado");
+  est.className = "estado" + (offline || atrasada || dados.falhas_seguidas ? " ruim" : "");
+  est.textContent = offline ? "offline" : !ult ? "aguardando" :
+    (atrasada || dados.falhas_seguidas) ? "⚠ verificar" : "● " + ult.toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
+  const h = new Date().getHours();
+  $("#ola").textContent = (h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite") + ", Henrique";
   const av = [];
-  if (d.falhas_seguidas) av.push(`<div class="aviso erro">A consulta ao DJEN falhou ${d.falhas_seguidas} vez(es) seguida(s). Confira as intimações manualmente.</div>`);
-  if (ult && (Date.now() - ult.getTime()) > 3 * 3600 * 1000) av.push(`<div class="aviso erro">A rotina não consulta o DJEN há mais de 3 horas. Algo pode ter parado.</div>`);
-  av.push(avisoNotificacao());
+  if (offline) av.push(`<div class="aviso">Sem conexão. Mostrando os dados salvos às ${ult ? ult.toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"}) : "—"}.</div>`);
+  if (dados.falhas_seguidas) av.push(`<div class="aviso erro">A consulta ao DJEN falhou ${dados.falhas_seguidas} vez(es) seguida(s). Confira as intimações manualmente.</div>`);
+  if (!offline && atrasada) av.push(`<div class="aviso erro">A rotina não consulta o DJEN há mais de 3 horas. Algo pode ter parado.</div>`);
+  if (vista === "prazos") av.push(avisoNotificacao());
   $("#avisos").innerHTML = av.join("");
-  let html;
-  if (aba === "pendentes") {
-    html = secao("Prazos em aberto", filtrar(d.abertos), "Nenhum prazo em aberto.") +
-           secao("Conferir (sem prazo definido)", filtrar(d.conferir), "Nada a conferir.");
-  } else if (aba === "historico") {
-    html = secao(`Histórico (${d.historico.length})`, filtrar(d.historico), "Nada encontrado.");
-  } else {
-    html = secao("Cumpridos", filtrar(d.cumpridos), "Nenhum.");
-  }
-  $("#conteudo").innerHTML = html;
-  ligarBotaoNotificacao();
+  ({prazos: renderPrazos, calendario: renderCalendario, historico: renderHistorico, ajustes: renderAjustes})[vista]();
+  ligarSwipe();
+  const bp = $("#ativarPushAviso"); if (bp) bp.onclick = ativarPush;
 }
 
+// ---------- Ações ----------
+async function marcarCumprido(chave, sim) {
+  await api("/api/cumprido", {chave, cumprido: sim});
+  await carregar();
+  if (sim) toast("Marcado como cumprido", "Desfazer", () => marcarCumprido(chave, false));
+}
 document.addEventListener("click", async (e) => {
+  const dia = e.target.closest("[data-dia]"); if (dia) { calSel = dia.dataset.dia; renderCalendario(); return; }
+  const mes = e.target.closest("[data-mes]"); if (mes) { calMes.setMonth(calMes.getMonth() + Number(mes.dataset.mes)); renderCalendario(); return; }
+  const hero = e.target.closest("[data-ir]");
+  if (hero) { const c = $(`.card[data-chave="${CSS.escape(hero.dataset.ir)}"]`); c && c.scrollIntoView({behavior: "smooth", block: "center"}); return; }
+  const f = e.target.closest("#filtros button");
+  if (f) { filtro = f.dataset.f; $$("#filtros button").forEach(x => x.classList.toggle("on", x === f)); renderHistorico(); ligarSwipe(); return; }
   const b = e.target.closest("button[data-acao]");
   if (!b) return;
   const chave = b.dataset.chave, r = porChave[chave], acao = b.dataset.acao;
+  if (acao === "copiar") { try { await navigator.clipboard.writeText(b.dataset.txt); toast("Copiado"); } catch (_) { toast("Não foi possível copiar"); } return; }
   const slot = b.closest(".card")?.querySelector(".formslot");
   if (acao === "form-prazo") { slot.innerHTML = slot.innerHTML ? "" : formPrazo(r); return; }
   if (acao === "form-nota") { slot.innerHTML = slot.innerHTML ? "" : formNota(r); return; }
   b.disabled = true;
   try {
-    if (acao === "cumprir" || acao === "desfazer") await api("/api/cumprido", {chave, cumprido: acao === "cumprir"});
-    else if (acao === "salvar-prazo") {
+    if (acao === "cumprir" || acao === "desfazer") { await marcarCumprido(chave, acao === "cumprir"); return; }
+    if (acao === "salvar-prazo") {
       const fatal = $("#ff-" + CSS.escape(chave)).value, dias = $("#fd-" + CSS.escape(chave)).value;
-      if (!fatal && !dias) { alert("Informe os dias ou a data fatal."); b.disabled = false; return; }
+      if (!fatal && !dias) { toast("Informe os dias ou a data fatal"); b.disabled = false; return; }
       await api("/api/ajuste", fatal ? {chave, fatal} : {chave, dias: Number(dias), tipo: $("#ft-" + CSS.escape(chave)).value});
-    }
-    else if (acao === "limpar-prazo") await api("/api/ajuste", {chave, limpar: true});
-    else if (acao === "salvar-nota") await api("/api/nota", {chave, texto: $("#fn-" + CSS.escape(chave)).value});
+      toast("Prazo salvo");
+    } else if (acao === "limpar-prazo") { await api("/api/ajuste", {chave, limpar: true}); toast("Voltou ao cálculo automático"); }
+    else if (acao === "salvar-nota") { await api("/api/nota", {chave, texto: $("#fn-" + CSS.escape(chave)).value}); toast("Nota salva"); }
+    else if (acao === "aplicar-ia") { await api("/api/ia/aplicar", {chave}); toast("Sugestão da IA aplicada"); }
     else if (acao === "excluir") {
       if (!confirm("Excluir este prazo avulso?")) { b.disabled = false; return; }
-      await api("/api/manual", {excluir: chave});
+      await api("/api/manual", {excluir: chave}); toast("Prazo avulso excluído");
     }
     await carregar();
-  } catch (err) { b.disabled = false; if (err.message !== "login") alert("Não foi possível salvar: " + err.message); }
+  } catch (err) { b.disabled = false; if (err.message !== "login") toast("Não foi possível salvar: " + err.message); }
 });
 
+// Deslizar para a direita = cumprido
+function ligarSwipe() {
+  $$(".card[data-swipe]").forEach(card => {
+    if (card._swipe) return; card._swipe = true;
+    const dentro = $(".dentro", card); let x0 = null, y0 = null, dx = 0, ativo = false;
+    card.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; ativo = false; dentro.style.transition = "none"; }, {passive: true});
+    card.addEventListener("touchmove", e => {
+      if (x0 === null) return;
+      const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+      if (!ativo && Math.abs(mx) > 12 && Math.abs(mx) > Math.abs(my) * 1.5 && mx > 0) ativo = true;
+      if (ativo) { dx = Math.max(0, mx); dentro.style.transform = `translateX(${dx}px)`; }
+    }, {passive: true});
+    card.addEventListener("touchend", () => {
+      dentro.style.transition = ""; const lim = card.offsetWidth * 0.38;
+      if (ativo && dx > lim) { dentro.style.transform = `translateX(100%)`; marcarCumprido(card.dataset.chave, true).catch(() => carregar()); }
+      else dentro.style.transform = "";
+      x0 = null; ativo = false;
+    });
+  });
+}
+
+// ---------- Prazo avulso (botão +) ----------
+function abrirFolha(sim) { $("#folha").classList.toggle("on", sim); $("#folhaFundo").classList.toggle("on", sim); }
+$("#fab").onclick = () => { if (vista === "calendario" && calSel) $("#avFatal").value = calSel; abrirFolha(true); };
+$("#folhaFundo").onclick = $("#avCancelar").onclick = () => abrirFolha(false);
 $("#avSalvar").onclick = async () => {
   const corpo = {processo: $("#avProc").value, partes: $("#avPartes").value, orgao: $("#avOrgao").value,
                  descricao: $("#avDesc").value, fatal: $("#avFatal").value};
-  if (!corpo.processo || !corpo.fatal) { alert("Informe o processo e a data fatal."); return; }
+  if (!corpo.processo || !corpo.fatal) { toast("Informe o processo e a data fatal"); return; }
   try {
     await api("/api/manual", corpo);
     ["#avProc", "#avPartes", "#avOrgao", "#avDesc", "#avFatal"].forEach(s => $(s).value = "");
-    $("#novoAvulso").open = false;
-    await carregar();
-  } catch (err) { if (err.message !== "login") alert("Não foi possível cadastrar: " + err.message); }
+    abrirFolha(false); toast("Prazo avulso cadastrado"); await carregar();
+  } catch (err) { if (err.message !== "login") toast("Não foi possível cadastrar: " + err.message); }
 };
 
-// --- Notificações ------------------------------------------------------------------
+// ---------- Notificações ----------
 const instalado = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
 const ehIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
-
 function avisoNotificacao() {
   if (!("serviceWorker" in navigator)) return "";
-  if (ehIOS() && !instalado())
-    return `<div class="aviso">Para receber notificações no iPhone: toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b> e abra o app pelo ícone.</div>`;
+  if (ehIOS() && !instalado()) return `<div class="aviso">Para receber notificações no iPhone: <b>Compartilhar → Adicionar à Tela de Início</b> e abra pelo ícone.</div>`;
   if (!("PushManager" in window) || !("Notification" in window)) return "";
   let ok = null; try { ok = localStorage.getItem("push_ok"); } catch (_) {}
   if (Notification.permission === "granted" && ok === "1") return "";
-  if (Notification.permission === "denied")
-    return `<div class="aviso">As notificações estão bloqueadas para este app nas configurações do aparelho.</div>`;
-  return `<div class="aviso">Ative as notificações para ser avisado de cada intimação nova.<div class="acoes"><button class="prim" id="ativarPush">Ativar notificações</button></div></div>`;
+  if (Notification.permission === "denied") return `<div class="aviso">As notificações estão bloqueadas nas configurações do aparelho.</div>`;
+  return `<div class="aviso">Ative as notificações para ser avisado de cada intimação nova. <div class="acoes"><button class="prim" id="ativarPushAviso">Ativar notificações</button></div></div>`;
 }
-
 function b64ParaBytes(b64) {
   const pad = "=".repeat((4 - b64.length % 4) % 4);
   const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
-
 async function inscreverEste() {
   const reg = await navigator.serviceWorker.ready;
   const sub = (await reg.pushManager.getSubscription()) ||
     await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ParaBytes(dados.vapid_publica)});
   await api("/api/push/inscrever", sub.toJSON());
 }
-
-function ligarBotaoNotificacao() {
-  const b = $("#ativarPush");
-  if (!b) return;
-  b.onclick = async () => {
-    b.disabled = true;
-    try {
-      const perm = await Notification.requestPermission();
-      if (perm !== "granted") { b.disabled = false; return; }
-      await inscreverEste();
-      await api("/api/push/teste", {});
-      try { localStorage.setItem("push_ok", "1"); } catch (_) {}
-      alert("Notificações ativadas. Deve chegar uma notificação de teste em instantes.");
-      render();
-    } catch (err) { b.disabled = false; alert("Não foi possível ativar: " + err.message); }
-  };
+async function ativarPush() {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return;
+    await inscreverEste(); await api("/api/push/teste", {});
+    try { localStorage.setItem("push_ok", "1"); } catch (_) {}
+    toast("Notificações ativadas — chega um teste em instantes"); render();
+  } catch (err) { toast("Não foi possível ativar: " + err.message); }
 }
-
-async function testarNotificacao() {
-  const b = $("#testarPush");
-  b.disabled = true;
+async function testarPush() {
   try {
     if ("serviceWorker" in navigator && "PushManager" in window && Notification.permission === "granted") await inscreverEste();
     const r = await api("/api/push/teste", {});
-    alert(`Teste enviado para ${r.enviados} aparelho(s).` + (r.erros && r.erros.length ? "\nAvisos: " + r.erros.join("; ") : ""));
-  } catch (err) { if (err.message !== "login") alert("Falha no teste: " + err.message); }
-  b.disabled = false;
+    toast(`Teste enviado para ${r.enviados} aparelho(s)`);
+  } catch (err) { if (err.message !== "login") toast("Falha no teste: " + err.message); }
 }
 
+// ---------- Carregamento (com cópia offline) ----------
 async function carregar() {
-  try { dados = await api("/api/dados"); mostrarApp(); render(); }
-  catch (e) { if (e.message !== "login") $("#status").textContent = "Sem conexão: " + e.message; }
+  try {
+    dados = await api("/api/dados"); offline = false;
+    try { const c = await caches.open("prazos-dados"); await c.put("/api/dados", new Response(JSON.stringify(dados), {headers: {"Content-Type": "application/json"}})); } catch (_) {}
+  } catch (e) {
+    if (e.message === "login") return;
+    try { const c = await caches.open("prazos-dados"); const r = await c.match("/api/dados"); if (r) { dados = await r.json(); offline = true; } } catch (_) {}
+    if (!dados) { mostrarApp(); $("#v-prazos").innerHTML = vazio("📡", "Sem conexão e sem dados salvos ainda."); return; }
+  }
+  mostrarApp(); render();
 }
 
+$("#busca").addEventListener("input", () => { renderHistorico(); ligarSwipe(); });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
 document.addEventListener("visibilitychange", () => { if (!document.hidden && dados) carregar(); });
-carregar();
+mostrarApp(); carregar();
 </script>
 </body>
 </html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatório de prazos</title>
+<style>
+  body { font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #17202b;
+    margin: 0; background: #f5f4f0; }
+  .folha { max-width: 820px; margin: 0 auto; background: #fff; padding: 28px 30px 40px; min-height: 100vh; }
+  .barra { display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .barra a, .barra button { font: inherit; font-weight: 650; padding: 9px 14px; border-radius: 10px; border: 1px solid #ddd;
+    background: #fff; color: #17202b; text-decoration: none; cursor: pointer; }
+  .barra button { background: #16233a; color: #fff; border-color: #16233a; }
+  h1 { font-size: 22px; margin: 0; } .sub { color: #66707b; margin: 4px 0 18px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #66707b; margin: 22px 0 6px;
+    border-bottom: 2px solid #16233a; padding-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 8px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
+  td.d { width: 108px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .p { font-weight: 650; } .m { color: #66707b; font-size: 12px; } .n { font-size: 12px; background: #eef2f8; padding: 2px 6px; border-radius: 5px; }
+  .urg { color: #c0392b; } .vazio { color: #66707b; padding: 14px 0; }
+  .rodape { margin-top: 26px; font-size: 11px; color: #66707b; border-top: 1px solid #eee; padding-top: 10px; }
+  @media print { body { background: #fff; } .barra { display: none; } .folha { padding: 0; min-height: 0; }
+    tr { break-inside: avoid; } @page { margin: 16mm 14mm; } }
+</style>
+</head>
+<body>
+<div class="folha">
+  <div class="barra"><a href="/">‹ Voltar</a><button onclick="window.print()">Imprimir / salvar PDF</button></div>
+  <h1>Prazos — Henrique Coutinho Torezani (OAB/ES 43.793)</h1>
+  <div class="sub" id="sub">Carregando…</div>
+  <div id="corpo"></div>
+  <div class="rodape">Relatório gerado a partir do DJEN com contagem conservadora. Confira sempre no PJe antes de agir.
+    Expedientes intimados só pelo sistema PJe aparecem apenas se cadastrados como prazo avulso.</div>
+</div>
+<script>
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SEM = ["dom","seg","ter","qua","qui","sex","sáb"];
+const dt = (iso) => { const [a, m, d] = iso.slice(0, 10).split("-").map(Number); return new Date(a, m - 1, d); };
+const fmt = (iso) => { const d = dt(iso); return `${SEM[d.getDay()]}, ${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`; };
+(async () => {
+  const r = await fetch("/api/dados", {credentials: "same-origin"});
+  if (r.status === 401) { location.href = "/"; return; }
+  const d = await r.json();
+  const hoje = dt(d.hoje), limite = new Date(hoje); limite.setDate(limite.getDate() + 14);
+  const prox = d.abertos.filter(x => dt(x.fatal) <= limite);
+  const depois = d.abertos.filter(x => dt(x.fatal) > limite);
+  document.getElementById("sub").textContent =
+    `Gerado em ${new Date().toLocaleString("pt-BR", {dateStyle: "long", timeStyle: "short"})} · ${prox.length} prazo(s) nos próximos 14 dias`;
+  const linha = (x) => `<tr><td class="d ${x.uteis_restantes <= 2 ? "urg" : ""}">${fmt(x.fatal)}<div class="m">${x.dias_restantes === 0 ? "hoje" : x.uteis_restantes + " dias úteis"}</div></td>
+    <td><div class="p">${esc(x.partes || x.processo)}</div>
+    <div class="m">${esc(x.processo)} · ${esc((x.orgao || "").split(" - ").slice(-1)[0])}</div>
+    <div class="m">${esc(x.ia && x.ia.providencia ? x.ia.providencia : x.prazo_obs)}</div>
+    ${x.nota ? `<div style="margin-top:3px"><span class="n">Nota: ${esc(x.nota)}</span></div>` : ""}</td></tr>`;
+  let html = `<h2>Próximos 14 dias</h2>` + (prox.length ? `<table>${prox.map(linha).join("")}</table>` : `<div class="vazio">Nenhum prazo.</div>`);
+  if (depois.length) html += `<h2>Depois</h2><table>${depois.map(linha).join("")}</table>`;
+  if (d.conferir.length) html += `<h2>A conferir (sem prazo definido)</h2><table>${d.conferir.map(x => `<tr><td class="d">${x.disponibilizacao ? x.disponibilizacao.split("-").reverse().join("/") : "—"}</td><td><div class="p">${esc(x.partes || x.processo)}</div><div class="m">${esc(x.processo)} · ${esc(x.prazo_obs)}</div></td></tr>`).join("")}</table>`;
+  document.getElementById("corpo").innerHTML = html;
+})();
+</script>
+</body>
+</html>

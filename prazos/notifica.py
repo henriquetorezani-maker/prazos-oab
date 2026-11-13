@@ -26,18 +26,19 @@ def _telegram(texto: str) -> bool:
     return True
 
 
-def _push(titulo: str, corpo: str, tag: str | None) -> int:
+def _push(titulo: str, corpo: str, tag: str | None, url: str = "/") -> int:
     try:
         from . import push
-        return push.enviar(titulo, corpo, "/", tag)
+        return push.enviar(titulo, corpo, url, tag)
     except Exception as e:  # o push nunca pode derrubar a rotina
         print(f"Falha no push: {e}")
         return 0
 
 
-def enviar(texto: str, titulo: str = "Prazos OAB", corpo: str | None = None, tag: str | None = None) -> None:
+def enviar(texto: str, titulo: str = "Prazos OAB", corpo: str | None = None, tag: str | None = None,
+           url: str = "/") -> None:
     """texto: mensagem completa (log e Telegram). titulo/corpo: versão curta para o push."""
     print("=== ALERTA ===\n" + texto + "\n==============")
-    n = _push(titulo, corpo or texto, tag)
+    n = _push(titulo, corpo or texto, tag, url)
     print(f"Push enviado a {n} aparelho(s).")
     _telegram(texto)

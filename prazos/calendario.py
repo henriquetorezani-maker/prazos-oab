@@ -152,6 +152,20 @@ class ResultadoPrazo:
         return "; ".join(partes)
 
 
+def dias_uteis_ate(hoje: date, fatal: date, comarca: str | None = None) -> int:
+    """Quantos dias úteis faltam: conta os úteis de amanhã até o fatal, inclusive.
+    0 = vence hoje; negativo = vencido (dias corridos de atraso)."""
+    if fatal < hoje:
+        return (fatal - hoje).days
+    cal = Calendario(comarca)
+    n, d = 0, hoje
+    while d < fatal:
+        d += timedelta(days=1)
+        if cal.util(d):
+            n += 1
+    return n
+
+
 def _contar(inicio: date, dias: int, cal: Calendario) -> tuple[date, list]:
     pulados = []
     d = inicio
