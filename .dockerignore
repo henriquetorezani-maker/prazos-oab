@@ -1,0 +1,7 @@
+.git
+.github
+tests
+data
+PAINEL.md
+__pycache__
+.pytest_cache

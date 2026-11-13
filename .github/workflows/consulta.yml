@@ -1,49 +1,19 @@
-name: Consulta intimações (DJEN)
+name: Testes
 
+# A rotina de consulta roda no Google Cloud (São Paulo), porque o Comunica
+# bloqueia acessos de fora do Brasil. Aqui ficam só os testes da contagem.
 on:
-  schedule:
-    - cron: "17 * * * *"   # de hora em hora (UTC)
-  workflow_dispatch:        # botão "Run workflow" para rodar na hora
-
-permissions:
-  contents: write
-
-concurrency:
-  group: consulta
-  cancel-in-progress: false
+  push:
+  workflow_dispatch:
 
 jobs:
-  consulta:
+  testes:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Instalar dependências
-        run: pip install -r requirements.txt
-
-      - name: Testes da contagem de prazos
-        run: python -m pytest -q
-
-      - name: Consultar Comunica e notificar
-        env:
-          OAB_NUMERO: "43793"
-          OAB_UF: "ES"
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python -m prazos.rodar
-
-      - name: Salvar estado e painel
-        if: always()
-        run: |
-          git config user.name "prazos-bot"
-          git config user.email "prazos-bot@users.noreply.github.com"
-          git add data PAINEL.md 2>/dev/null || true
-          if ! git diff --cached --quiet; then
-            git commit -m "Atualiza intimações $(date -u +%Y-%m-%dT%H:%MZ)"
-            git push
-          fi
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q

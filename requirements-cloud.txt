@@ -1,0 +1,2 @@
+requests>=2.31
+google-cloud-storage>=2.16

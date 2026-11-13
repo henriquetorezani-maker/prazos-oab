@@ -4,9 +4,13 @@ Acompanhamento automático das intimações da OAB/ES 43.793 no DJEN (Comunica/C
 
 **É ferramenta de conferência. O prazo vale pelo PJe e pela análise do advogado.**
 
+## Onde roda
+
+O Comunica bloqueia acessos de fora do Brasil (o GitHub Actions recebeu HTTP 403). Por isso a rotina roda como **Cloud Run Job no Google Cloud, em São Paulo** (`southamerica-east1`), disparada de hora em hora pelo Cloud Scheduler. O estado fica num bucket privado do Cloud Storage. Para instalar ou atualizar, rode `bash implantar.sh ID_DO_PROJETO` no Cloud Shell. O GitHub Actions roda só os testes.
+
 ## Como funciona
 
-- O GitHub Actions roda `python -m prazos.rodar` de hora em hora.
+- O Cloud Scheduler dispara `python -m prazos.rodar` de hora em hora.
 - A rotina consulta a API pública do Comunica pela OAB e detecta comunicações que ainda não tinha visto.
 - Para cada comunicação nova, identifica o prazo no texto e calcula o prazo fatal em dias úteis.
 - O alerta vai para o Telegram.
@@ -31,7 +35,7 @@ Acompanhamento automático das intimações da OAB/ES 43.793 no DJEN (Comunica/C
 
 ## Configuração
 
-Segredos do repositório (Settings → Secrets and variables → Actions):
+Rode `TELEGRAM_TOKEN=... TELEGRAM_CHAT_ID=... bash implantar.sh ID_DO_PROJETO` no Cloud Shell:
 
 - `TELEGRAM_TOKEN`: token do bot (criado no @BotFather).
 - `TELEGRAM_CHAT_ID`: id do seu chat com o bot.

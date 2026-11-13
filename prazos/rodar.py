@@ -13,7 +13,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import comunica, notifica
+from . import armazenamento, comunica, notifica
 from .calendario import prazo_por_disponibilizacao
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -141,6 +141,14 @@ def painel(registros: list[dict], agora: datetime) -> str:
 
 
 def main() -> int:
+    armazenamento.baixar(RAIZ)
+    try:
+        return executar()
+    finally:
+        armazenamento.enviar(RAIZ)
+
+
+def executar() -> int:
     oab = os.environ.get("OAB_NUMERO", "43793")
     uf = os.environ.get("OAB_UF", "ES")
     agora = datetime.now(TZ)
