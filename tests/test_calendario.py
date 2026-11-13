@@ -1,8 +1,18 @@
 from datetime import date
 
 from prazos.calendario import (
-    Calendario, pascoa, prazo_por_ciencia, prazo_por_disponibilizacao,
+    Calendario, pascoa, prazo_corridos, prazo_por_ciencia, prazo_por_disponibilizacao,
 )
+
+
+def test_corridos_recua_para_dia_util():
+    # Disponibilizado 12/11 (qui): publicação 13/11, início 16/11 (seg).
+    # 10 dias corridos: 16/11 a 25/11 (qua) — dia útil, fica.
+    assert prazo_corridos(date(2026, 11, 12), 10).fatal == date(2026, 11, 25)
+    # 6 dias corridos: 16 a 21/11 (sáb) → recua para sex 20/11? 20/11 é feriado → 19/11 (qui).
+    assert prazo_corridos(date(2026, 11, 12), 6).fatal == date(2026, 11, 19)
+    # nunca maior que a contagem em dias úteis
+    assert prazo_corridos(date(2026, 11, 12), 15).fatal <= prazo_por_disponibilizacao(date(2026, 11, 12), 15).fatal
 
 
 def test_pascoa():

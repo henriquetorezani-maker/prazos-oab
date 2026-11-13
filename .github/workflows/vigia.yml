@@ -1,0 +1,67 @@
+name: Vigia da rotina
+
+# Vigia independente do Google: a cada 3 horas consulta o endereço de saúde do aplicativo
+# (público, sem dados de processos). Se a última consulta ao DJEN tiver mais de 3 horas,
+# ou houver falhas seguidas, abre uma issue no repositório — o GitHub avisa por e-mail.
+on:
+  schedule:
+    - cron: "41 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  vigiar:
+    if: vars.VIGIA_ATIVO == 'sim'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Conferir saúde da rotina
+        id: saude
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          set +e
+          RESP=$(curl -sS --max-time 60 "$APP_URL/api/saude")
+          COD=$?
+          echo "Resposta: $RESP"
+          PROBLEMA=$(python3 - "$COD" "$RESP" <<'PY'
+          import json, sys
+          cod, resp = int(sys.argv[1]), sys.argv[2]
+          if cod != 0:
+              print("o aplicativo não respondeu"); sys.exit()
+          try:
+              d = json.loads(resp)
+          except ValueError:
+              print("resposta inválida do aplicativo"); sys.exit()
+          m, f = d.get("minutos_desde_ultima_consulta"), d.get("falhas_seguidas", 0)
+          if m is None:
+              print("a rotina nunca registrou consulta")
+          elif m > 180:
+              print(f"a última consulta ao DJEN foi há {m // 60} h {m % 60} min")
+          elif f >= 2:
+              print(f"a consulta ao DJEN falhou {f} vezes seguidas")
+          PY
+          )
+          echo "problema=$PROBLEMA" >> "$GITHUB_OUTPUT"
+          if [ -n "$PROBLEMA" ]; then echo "PROBLEMA: $PROBLEMA"; else echo "Rotina saudável."; fi
+
+      - name: Abrir alerta (issue) se houver problema
+        if: steps.saude.outputs.problema != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const problema = `${{ steps.saude.outputs.problema }}`;
+            const abertas = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo, state: "open", labels: "vigia" });
+            if (abertas.data.length) {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: abertas.data[0].number, body: `Ainda com problema: ${problema}.` });
+            } else {
+              await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo,
+                title: "⚠️ Rotina de prazos parada — confira as intimações manualmente",
+                labels: ["vigia"],
+                body: `O vigia detectou: **${problema}**.\n\nAté resolver, confira as intimações no PJe/Comunica manualmente.\nFeche esta issue quando a rotina voltar.` });
+            }
+            core.setFailed(problema);

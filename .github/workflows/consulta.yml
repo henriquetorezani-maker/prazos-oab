@@ -1,10 +1,15 @@
-name: Testes
+name: Testes e implantação
 
-# A rotina de consulta roda no Google Cloud (São Paulo), porque o Comunica
-# bloqueia acessos de fora do Brasil. Aqui ficam só os testes da contagem.
+# A rotina de consulta roda no Google Cloud (São Paulo), porque o Comunica bloqueia
+# acessos de fora do Brasil. Aqui: testes a cada envio e, se passarem, implantação
+# automática no Google Cloud (via federação de identidade, sem senhas guardadas).
 on:
   push:
   workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   testes:
@@ -17,3 +22,29 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
+
+  implantar:
+    needs: testes
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ATIVO == 'sim'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: implantar
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Construir e atualizar a rotina e o aplicativo
+        env:
+          REGIAO: southamerica-east1
+        run: |
+          gcloud config set project "${{ vars.GCP_PROJECT }}"
+          gcloud run jobs deploy prazos-oab --source . --region "$REGIAO" --quiet
+          IMAGEM=$(gcloud run jobs describe prazos-oab --region "$REGIAO" \
+            --format='value(spec.template.spec.template.spec.containers[0].image)')
+          gcloud run services update prazos-oab-app --image "$IMAGEM" --region "$REGIAO" --quiet
+          echo "Implantado: $IMAGEM"

@@ -39,6 +39,13 @@ for tentativa in 1 2 3 4 5 6; do
   echo "   aguardando a conta de serviço propagar ($tentativa/6)..."; sleep 15
 done
 
+echo "==> Backup: versionamento do bucket (versões antigas guardadas por 60 dias)"
+gcloud storage buckets update "gs://$BUCKET" --versioning >/dev/null
+cat > /tmp/ciclo-vida.json <<'JSON'
+{"rule": [{"action": {"type": "Delete"}, "condition": {"daysSinceNoncurrentTime": 60}}]}
+JSON
+gcloud storage buckets update "gs://$BUCKET" --lifecycle-file=/tmp/ciclo-vida.json >/dev/null
+
 echo "==> Permissão de build para a conta padrão (projetos novos exigem)"
 gcloud projects add-iam-policy-binding "$PROJETO" \
   --member="serviceAccount:${NUMERO}-compute@developer.gserviceaccount.com" \
@@ -86,12 +93,51 @@ if [[ $APP_OK == 1 ]]; then
   gcloud run jobs update "$JOB" --region "$REGIAO" --quiet --update-env-vars "APP_URL=$URL" >/dev/null
 fi
 
+echo "==> Implantação automática a partir do GitHub (sem senhas: federação de identidade)"
+REPO="henriquetorezani-maker/prazos-oab"
+DEPLOY_NOME="prazos-oab-deploy"
+DEPLOY_SA="${DEPLOY_NOME}@${PROJETO}.iam.gserviceaccount.com"
+AUTO_OK=1
+(
+  set -e
+  gcloud services enable iamcredentials.googleapis.com sts.googleapis.com >/dev/null
+  gcloud iam workload-identity-pools describe github --location=global >/dev/null 2>&1 || \
+    gcloud iam workload-identity-pools create github --location=global --display-name="GitHub" >/dev/null
+  gcloud iam workload-identity-pools providers describe prazos-oab --location=global \
+      --workload-identity-pool=github >/dev/null 2>&1 || \
+    gcloud iam workload-identity-pools providers create-oidc prazos-oab --location=global \
+      --workload-identity-pool=github --display-name="Repo prazos-oab" \
+      --issuer-uri="https://token.actions.githubusercontent.com" \
+      --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
+      --attribute-condition="assertion.repository=='$REPO' && assertion.ref=='refs/heads/main'" >/dev/null
+  gcloud iam service-accounts describe "$DEPLOY_SA" >/dev/null 2>&1 || \
+    gcloud iam service-accounts create "$DEPLOY_NOME" --display-name="Implantação automática (GitHub)" >/dev/null
+  sleep 10
+  for papel in roles/run.admin roles/cloudbuild.builds.editor roles/artifactregistry.writer \
+               roles/storage.admin roles/serviceusage.serviceUsageConsumer roles/viewer; do
+    gcloud projects add-iam-policy-binding "$PROJETO" --member="serviceAccount:$DEPLOY_SA" \
+      --role="$papel" --condition=None >/dev/null
+  done
+  for alvo in "$SA" "${NUMERO}-compute@developer.gserviceaccount.com"; do
+    gcloud iam service-accounts add-iam-policy-binding "$alvo" --member="serviceAccount:$DEPLOY_SA" \
+      --role="roles/iam.serviceAccountUser" >/dev/null
+  done
+  gcloud iam service-accounts add-iam-policy-binding "$DEPLOY_SA" --role="roles/iam.workloadIdentityUser" \
+    --member="principalSet://iam.googleapis.com/projects/$NUMERO/locations/global/workloadIdentityPools/github/attribute.repository/$REPO" >/dev/null
+) || AUTO_OK=0
+if [[ $AUTO_OK == 1 ]]; then
+  echo "   OK: provedor projects/$NUMERO/locations/global/workloadIdentityPools/github/providers/prazos-oab"
+  echo "   OK: conta $DEPLOY_SA"
+else
+  echo "   AVISO: a implantação automática não foi configurada (a rotina e o app seguem normais)."
+fi
+
 echo "==> Execução de teste da rotina"
 gcloud run jobs execute "$JOB" --region "$REGIAO" --wait || true
 sleep 10
 echo "==> Registro da execução:"
 gcloud logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$JOB\"" \
-  --freshness=15m --limit=40 --order=asc --format='value(textPayload)'
+  --freshness=4m --limit=40 --order=asc --format='value(textPayload)'
 
 echo
 if [[ $APP_OK == 1 ]]; then

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
@@ -16,21 +17,17 @@ class FalhaConsulta(Exception):
     pass
 
 
-def buscar(oab: str, uf: str, inicio: date, fim: date, sessao: requests.Session | None = None) -> list[dict]:
-    """Retorna todas as comunicações (itens brutos) da OAB no período. Levanta FalhaConsulta se algo der errado."""
+def _consultar(filtros: dict, inicio: date, fim: date, max_paginas: int,
+               sessao: requests.Session | None = None) -> list[dict]:
     s = sessao or requests.Session()
     s.headers.setdefault("User-Agent", "prazos-oab/1.0 (acompanhamento pessoal de intimacoes)")
     itens: list[dict] = []
     pagina = 1
     while True:
-        params = {
-            "numeroOab": oab,
-            "ufOab": uf,
-            "dataDisponibilizacaoInicio": inicio.isoformat(),
-            "dataDisponibilizacaoFim": fim.isoformat(),
-            "pagina": pagina,
-            "itensPorPagina": POR_PAGINA,
-        }
+        params = {**filtros,
+                  "dataDisponibilizacaoInicio": inicio.isoformat(),
+                  "dataDisponibilizacaoFim": fim.isoformat(),
+                  "pagina": pagina, "itensPorPagina": POR_PAGINA}
         try:
             r = s.get(API, params=params, timeout=60)
         except requests.RequestException as e:
@@ -49,9 +46,24 @@ def buscar(oab: str, uf: str, inicio: date, fim: date, sessao: requests.Session 
         if len(lote) < POR_PAGINA or (total is not None and len(itens) >= int(total)):
             break
         pagina += 1
-        if pagina > 50:
-            raise FalhaConsulta("paginação não terminou (mais de 50 páginas)")
+        if pagina > max_paginas:
+            raise FalhaConsulta(f"paginação não terminou (mais de {max_paginas} páginas)")
     return itens
+
+
+def buscar(oab: str, uf: str, inicio: date, fim: date, sessao: requests.Session | None = None) -> list[dict]:
+    """Todas as comunicações da OAB no período. Levanta FalhaConsulta se algo der errado."""
+    return _consultar({"numeroOab": oab, "ufOab": uf}, inicio, fim, 50, sessao)
+
+
+def buscar_nome(nome: str, inicio: date, fim: date, sessao: requests.Session | None = None) -> list[dict]:
+    """Busca reserva pelo nome do advogado (pega publicações com a OAB errada ou ausente).
+    Mantém só as que citam o sobrenome, por segurança, caso o filtro do servidor seja amplo."""
+    itens = _consultar({"nomeAdvogado": nome}, inicio, fim, 10, sessao)
+    sobrenome = nome.split()[-1].upper()
+    return [i for i in itens
+            if sobrenome in (str(i.get("texto", "")) + json.dumps(i.get("destinatarioadvogados", ""),
+                                                                    ensure_ascii=False)).upper()]
 
 
 def _g(item: dict, *chaves, padrao=""):
@@ -86,6 +98,7 @@ class Comunicacao:
     tipo: str
     texto: str
     link: str
+    partes: str = ""
 
     def dict(self) -> dict:
         return asdict(self)
@@ -107,7 +120,31 @@ def normalizar(item: dict) -> Comunicacao:
         tipo=str(_g(item, "tipoComunicacao", "tipo_comunicacao", "tipoDocumento")),
         texto=re.sub(r"\s+", " ", texto).strip(),
         link=str(_g(item, "link")),
+        partes=extrair_partes(texto, item),
     )
+
+
+_ATIVO = r"REQUERENTE|AUTORA?|EXEQUENTE|APELANTE|AGRAVANTE|EMBARGANTE|IMPETRANTE|RECORRENTE|RECLAMANTE|PROMOVENTE"
+_PASSIVO = r"REQUERID[OA]|R[ÉE]U?|EXECUTAD[OA]|APELAD[OA]|AGRAVAD[OA]|EMBARGAD[OA]|IMPETRAD[OA]|RECORRID[OA]|RECLAMAD[OA]|PROMOVID[OA]"
+_FIM = (r"(?:\.\s+(?=[A-ZÀ-Ú][a-zà-ú])|\s+(?:Advogad|INTIMA|DESPACHO|DECIS|SENTEN|CITA|ATO\s|CERTID|Por ordem|Vistos"
+        r"|$|(?:" + _PASSIVO + r")\s*(?:\(S\))?:))")
+
+
+def _nome(s: str) -> str:
+    s = re.sub(r"\s+e outros?\s*\(\d+\)", " e outros", s.strip(" .,;"))
+    minus = {"de", "da", "do", "das", "dos", "e", "s/a", "ltda", "ag"}
+    return " ".join(w.lower() if w.lower() in minus else w.capitalize() for w in s.split())[:80]
+
+
+def extrair_partes(texto: str, item: dict | None = None) -> str:
+    """'Autor x Réu' a partir do cabeçalho do ato; vazio se não encontrar."""
+    t = re.sub(r"\s+", " ", texto or "")
+    a = re.search(r"(?:" + _ATIVO + r")\s*(?:\(S\))?:\s*(.+?)" + _FIM, t)
+    p = re.search(r"(?:" + _PASSIVO + r")\s*(?:\(S\))?:\s*(.+?)" + _FIM.replace("|(?:" + _PASSIVO + r")\s*(?:\(S\))?:", ""), t)
+    if a and p:
+        return f"{_nome(a.group(1))} x {_nome(p.group(1))}"
+    nomes = [d.get("nome") for d in (item or {}).get("destinatarios", []) if isinstance(d, dict) and d.get("nome")]
+    return " / ".join(_nome(n) for n in nomes[:2])
 
 
 def _mascara(n: str) -> str:
@@ -131,24 +168,67 @@ _RE_PRAZO = re.compile(
 )
 
 
-def identificar_prazo(texto: str) -> tuple[int | None, str]:
-    """Retorna (dias, observação). Só devolve dias quando o texto diz expressamente."""
+_RE_HORAS = re.compile(
+    r"prazo\s+(?:comum\s+)?(?:de\s+)?(\d{1,3}|[a-zçãéê]+)\s*(?:\([^)]{0,25}\))?\s*horas",
+    re.IGNORECASE,
+)
+# Frases cujo prazo não corre agora para o advogado intimado: citação da parte contrária
+# e prazos futuros ("findo o prazo, intime-se...").
+_RE_FRASE_IGNORAR = re.compile(
+    r"cite-?se|citaç|findo\s+o\s+prazo|decorrido\s+o\s+prazo|ap[óo]s\s+o\s+decurso|transcorrido\s+o\s+prazo",
+    re.IGNORECASE,
+)
+
+
+def _numero(bruto: str) -> int | None:
+    bruto = bruto.lower()
+    return int(bruto) if bruto.isdigit() else _NUM_EXTENSO.get(bruto)
+
+
+def identificar_prazo(texto: str) -> tuple[int | None, str, str]:
+    """Retorna (dias, observação, tipo), com tipo 'uteis' ou 'corridos'.
+
+    Só devolve dias quando o texto diz expressamente. Prazos em horas ou em dias corridos
+    são convertidos para contagem corrida (mais curta) e sinalizados.
+    """
     t = texto or ""
-    achados = []
-    for m in _RE_PRAZO.finditer(t):
-        bruto = m.group(1).lower()
-        n = int(bruto) if bruto.isdigit() else _NUM_EXTENSO.get(bruto)
-        if n:
-            achados.append(n)
+    frases = re.split(r"(?<=[.;])\s+", t)
+    achados, ignorados, corridos = [], 0, False
+    for f in frases:
+        tem_prazo = _RE_PRAZO.search(f) or _RE_HORAS.search(f)
+        if not tem_prazo:
+            continue
+        if _RE_FRASE_IGNORAR.search(f):
+            ignorados += 1
+            continue
+        for m in _RE_HORAS.finditer(f):
+            n = _numero(m.group(1))
+            if n:
+                achados.append(max(1, -(-n // 24)))
+                corridos = True
+        for m in _RE_PRAZO.finditer(f):
+            n = _numero(m.group(1))
+            if n:
+                achados.append(n)
+                if re.search(r"corridos", f[m.start():m.end() + 30], re.IGNORECASE):
+                    corridos = True
+    tipo = "corridos" if corridos else "uteis"
+    aviso_corr = " — prazo em horas/dias CORRIDOS: contagem corrida, CONFERIR" if corridos else ""
     if achados:
         unicos = sorted(set(achados))
-        if len(unicos) == 1:
-            return unicos[0], f"prazo expresso no ato: {unicos[0]} dias"
-        return min(unicos), f"vários prazos no ato ({', '.join(map(str, unicos))} dias) — usado o menor; CONFERIR"
+        if len(unicos) == 1 and not ignorados:
+            return unicos[0], f"prazo expresso no ato: {unicos[0]} dias{aviso_corr}", tipo
+        extra = f"; {ignorados} trecho(s) de citação/prazo futuro desconsiderado(s)" if ignorados else ""
+        return (min(unicos),
+                f"prazos no ato: {', '.join(map(str, unicos))} dias — usado o menor{extra}{aviso_corr}; CONFERIR",
+                tipo)
+    if ignorados:
+        return None, ("o ato só traz prazos de citação da outra parte ou para depois — "
+                      "conferir se há providência agora"), "uteis"
     if re.search(r"prazo\s+legal", t, re.IGNORECASE):
         if re.search(r"r[ée]plica", t, re.IGNORECASE):
-            return 15, "réplica 'no prazo legal': presumido 15 dias úteis (arts. 350-351 CPC) — CONFERIR"
-        return None, "ato fala em 'prazo legal' — definir o prazo conforme o ato processual"
+            return 15, "réplica 'no prazo legal': presumido 15 dias úteis (arts. 350-351 CPC) — CONFERIR", "uteis"
+        return None, "ato fala em 'prazo legal' — definir o prazo conforme o ato processual", "uteis"
     if re.search(r"audi[êe]ncia", t, re.IGNORECASE):
-        return None, "intimação de audiência — conferir data e se há providência"
-    return None, "prazo não identificado no texto — conferir"
+        return None, "intimação de audiência — conferir data e se há providência", "uteis"
+    return None, "prazo não identificado no texto — conferir", "uteis"

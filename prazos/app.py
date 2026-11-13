@@ -15,11 +15,10 @@ from zoneinfo import ZoneInfo
 
 from flask import Flask, jsonify, request, send_from_directory, session
 
-from . import armazenamento, config, push
+from . import armazenamento, config, dados as dados_mod, push
 
 TZ = ZoneInfo("America/Sao_Paulo")
 PASTA_APP = Path(__file__).resolve().parent.parent / "app"
-STATUS = "data/status.json"
 
 app = Flask(__name__, static_folder=None)
 # O Cloud Run termina o HTTPS na frente do contêiner; isto faz o Flask enxergar https e o host real.
@@ -38,7 +37,8 @@ app.config.update(
 def exige_login(f):
     @wraps(f)
     def inner(*a, **k):
-        if not session.get("ok"):
+        if not session.get("ok") or session.get("v", 0) != config.carregar().get("versao_sessao", 0):
+            session.clear()
             return jsonify(erro="não autenticado"), 401
         return f(*a, **k)
     return inner
@@ -80,12 +80,18 @@ def estatico(arquivo):
 
 @app.get("/api/saude")
 def saude():
+    """Público e sem dados de processos: usado pelo vigia externo (GitHub)."""
     cfg = config.carregar()
     url = request.host_url.rstrip("/")
     if url.startswith("https://") and cfg.get("url_app") != url:
         cfg["url_app"] = url
         config.salvar(cfg)
-    return jsonify(ok=True)
+    estado = armazenamento.ler_json("data/estado.json", {})
+    minutos = None
+    if estado.get("ultima_consulta"):
+        minutos = int((datetime.now(TZ) - datetime.fromisoformat(estado["ultima_consulta"])).total_seconds() // 60)
+    return jsonify(ok=True, minutos_desde_ultima_consulta=minutos,
+                   falhas_seguidas=estado.get("falhas_seguidas", 0))
 
 
 @app.post("/api/entrar")
@@ -98,6 +104,7 @@ def entrar():
         return jsonify(erro="código inválido"), 403
     session.permanent = True
     session["ok"] = True
+    session["v"] = config.carregar().get("versao_sessao", 0)
     return jsonify(ok=True)
 
 
@@ -107,43 +114,19 @@ def sair():
     return jsonify(ok=True)
 
 
-def _chave_dup(r: dict) -> tuple:
-    return (r.get("processo"), r.get("disponibilizacao"), r.get("fatal"), (r.get("texto") or "")[:300])
-
-
 def montar_dados(hoje: date | None = None) -> dict:
     hoje = hoje or datetime.now(TZ).date()
     regs = armazenamento.ler_json("data/intimacoes.json", [])
-    status = armazenamento.ler_json(STATUS, {})
     estado = armazenamento.ler_json("data/estado.json", {})
-
-    vistos, unicos = set(), []
-    for r in sorted(regs, key=lambda r: r.get("disponibilizacao", ""), reverse=True):
-        k = _chave_dup(r)
-        if k in vistos:
-            continue
-        vistos.add(k)
-        r = dict(r)
-        r["cumprido"] = status.get(r["chave"], {}).get("cumprido")
-        if r.get("fatal"):
-            r["dias_restantes"] = (date.fromisoformat(r["fatal"]) - hoje).days
-        unicos.append(r)
-
-    limite = (hoje - timedelta(days=45)).isoformat()
-    abertos = sorted((r for r in unicos if r.get("fatal") and r["dias_restantes"] >= 0 and not r["cumprido"]),
-                     key=lambda r: r["fatal"])
-    conferir = [r for r in unicos if not r.get("fatal") and not r["cumprido"]
-                and r.get("disponibilizacao", "") >= limite]
-    cumpridos = [r for r in unicos if r["cumprido"]][:30]
-    historico = [r for r in unicos if r.get("disponibilizacao", "") >= limite]
+    unif = dados_mod.unificar(regs, hoje)
     return {
         "hoje": hoje.isoformat(),
         "ultima_consulta": estado.get("ultima_consulta"),
         "falhas_seguidas": estado.get("falhas_seguidas", 0),
-        "abertos": abertos,
-        "conferir": conferir,
-        "cumpridos": cumpridos,
-        "historico": historico,
+        "abertos": dados_mod.abertos(unif),
+        "conferir": dados_mod.conferir(unif, hoje),
+        "cumpridos": sorted((r for r in unif if r["cumprido"]), key=lambda r: r["cumprido"], reverse=True)[:50],
+        "historico": sorted(unif, key=lambda r: r.get("disponibilizacao", ""), reverse=True),
     }
 
 
@@ -162,12 +145,12 @@ def cumprido():
     chave = str(corpo.get("chave", ""))
     if not chave:
         return jsonify(erro="chave ausente"), 400
-    status = armazenamento.ler_json(STATUS, {})
+    status = armazenamento.ler_json(dados_mod.STATUS, {})
     if corpo.get("cumprido", True):
         status[chave] = {"cumprido": datetime.now(TZ).isoformat(timespec="minutes")}
     else:
         status.pop(chave, None)
-    armazenamento.gravar_json(STATUS, status)
+    armazenamento.gravar_json(dados_mod.STATUS, status)
     return jsonify(ok=True)
 
 
@@ -191,3 +174,65 @@ def push_teste():
     if n == 0:
         return jsonify(erro="nenhum aparelho recebeu: " + ("; ".join(erros) or "sem inscrições")), 502
     return jsonify(ok=True, enviados=n, erros=erros)
+
+
+def _corpo() -> dict:
+    return request.get_json(silent=True) or {}
+
+
+@app.post("/api/ajuste")
+@exige_login
+def ajuste():
+    c = _corpo()
+    chave = str(c.get("chave", ""))
+    if not chave:
+        return jsonify(erro="chave ausente"), 400
+    try:
+        if c.get("limpar"):
+            dados_mod.definir_ajuste(chave)
+        elif c.get("fatal"):
+            dados_mod.definir_ajuste(chave, fatal=str(c["fatal"]))
+        else:
+            dados_mod.definir_ajuste(chave, dias=int(c.get("dias", 0)), tipo=str(c.get("tipo", "uteis")))
+    except (ValueError, TypeError):
+        return jsonify(erro="prazo inválido"), 400
+    return jsonify(ok=True)
+
+
+@app.post("/api/nota")
+@exige_login
+def nota():
+    c = _corpo()
+    if not c.get("chave"):
+        return jsonify(erro="chave ausente"), 400
+    dados_mod.definir_nota(str(c["chave"]), str(c.get("texto", "")))
+    return jsonify(ok=True)
+
+
+@app.post("/api/manual")
+@exige_login
+def manual():
+    c = _corpo()
+    try:
+        if c.get("excluir"):
+            dados_mod.excluir_manual(str(c["excluir"]))
+            return jsonify(ok=True)
+        if not c.get("processo") or not c.get("fatal"):
+            return jsonify(erro="informe processo e data fatal"), 400
+        chave = dados_mod.criar_manual(str(c["processo"]), str(c.get("descricao", "")), str(c["fatal"]),
+                                       str(c.get("partes", "")), str(c.get("orgao", "")))
+    except ValueError:
+        return jsonify(erro="data inválida"), 400
+    return jsonify(ok=True, chave=chave)
+
+
+@app.post("/api/trocar-codigo")
+@exige_login
+def trocar_codigo():
+    """Gera novo código e desconecta todos os aparelhos (inclusive este, que entra de novo)."""
+    cfg = config.carregar()
+    cfg["codigo_acesso"] = config.novo_codigo()
+    cfg["versao_sessao"] = cfg.get("versao_sessao", 0) + 1
+    config.salvar(cfg)
+    session["v"] = cfg["versao_sessao"]  # mantém este aparelho conectado
+    return jsonify(ok=True, codigo=cfg["codigo_acesso"])

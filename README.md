@@ -19,6 +19,23 @@ O serviço `prazos-oab-app`, no Cloud Run, publica um aplicativo web instalável
 
 No iPhone, as notificações exigem que o app esteja adicionado à Tela de Início. O Telegram continua opcional, como canal reserva.
 
+
+## Recursos (versão de 13/11/2026)
+
+- **Prazo manual:** em cada intimação há "Definir prazo", com os dias (úteis ou corridos) ou a data fatal exata. "Voltar ao automático" desfaz.
+- **Prazo avulso:** cadastra expedientes que só saíram no PJe, com processo, descrição e data fatal.
+- **Notas:** anotação livre em cada intimação, que aparece também nos lembretes.
+- **Busca e abas:** busca por processo, parte, vara, texto ou nota, nas abas Pendentes, Histórico e Cumpridos.
+- **Lembretes:** push 5 dias antes, 2 dias antes e no dia do fatal, entre 8h e 21h. Não lembra o que já foi marcado como cumprido.
+- **Leitura do prazo no texto:**
+  - prazos em horas ou em "dias corridos" usam contagem corrida, sempre o resultado mais curto, e são sinalizados;
+  - prazos de citação da outra parte e os que correm "findo o prazo" são desconsiderados.
+- **Busca reserva:** além da OAB, a rotina busca pelo nome do advogado.
+- **Segurança:** no app há "Trocar código e sair dos outros aparelhos".
+- **Backup:** o bucket guarda versões antigas por 60 dias.
+- **Vigia** (`.github/workflows/vigia.yml`): a cada 3 horas o GitHub consulta `/api/saude`. Se a última consulta ao DJEN tiver mais de 3 horas, abre uma issue e o GitHub avisa por e-mail. Ativado pela variável `VIGIA_ATIVO=sim`.
+- **Implantação automática:** depois que os testes passam, cada envio à branch `main` é implantado no Google Cloud, por federação de identidade, sem chaves. Ativada pela variável `DEPLOY_ATIVO=sim`, junto com `GCP_PROJECT`, `GCP_WIF_PROVIDER` e `GCP_DEPLOY_SA`.
+
 ## Como funciona
 
 - O Cloud Scheduler dispara `python -m prazos.rodar` de hora em hora.

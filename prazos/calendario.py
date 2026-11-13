@@ -130,12 +130,17 @@ class ResultadoPrazo:
     fatal_alternativo: date | None = None
     duvidosos_no_periodo: list[tuple[date, str]] = field(default_factory=list)
     pulados: list[tuple[date, str]] = field(default_factory=list)
+    corridos: bool = False
 
     def explicacao(self) -> str:
         partes = []
         if self.publicacao:
             partes.append(f"publicação {self.publicacao:%d/%m/%Y}")
         partes.append(f"início {self.inicio:%d/%m/%Y}")
+        if self.corridos:
+            partes.append(f"{self.dias} dias CORRIDOS → fatal {self.fatal:%d/%m/%Y} "
+                          "(se cair em dia não útil, recuado para o dia útil anterior)")
+            return "; ".join(partes)
         partes.append(f"{self.dias} dias úteis → fatal {self.fatal:%d/%m/%Y}")
         feriados = [f"{d:%d/%m} ({m})" for d, m in self.pulados if m != "fim de semana"]
         if feriados:
@@ -159,6 +164,23 @@ def _contar(inicio: date, dias: int, cal: Calendario) -> tuple[date, list]:
         else:
             contados += 1
     return d, pulados
+
+
+def prazo_corridos(disponibilizacao: date, dias: int, comarca: str | None = None) -> ResultadoPrazo:
+    """Prazo em dias corridos (ou em horas convertidas em dias), intimação pelo DJEN.
+
+    Conservador: conta do 1º dia útil após a publicação e, se o último dia cair em dia
+    não útil, RECUA para o dia útil anterior (a lei prorrogaria; aqui preferimos o mais cedo).
+    """
+    cal = Calendario(comarca)
+    publicacao = cal.proximo_util(disponibilizacao)
+    inicio = cal.proximo_util(publicacao)
+    fatal = inicio + timedelta(days=max(dias, 1) - 1)
+    while fatal > inicio and not cal.util(fatal):
+        fatal -= timedelta(days=1)
+    r = ResultadoPrazo(dias, publicacao, inicio, fatal)
+    r.corridos = True
+    return r
 
 
 def prazo_por_disponibilizacao(disponibilizacao: date, dias: int,

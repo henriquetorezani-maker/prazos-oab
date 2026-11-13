@@ -25,7 +25,8 @@
   * { box-sizing: border-box; }
   body { margin: 0; font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg); color: var(--txt); padding-bottom: env(safe-area-inset-bottom); }
-  header { background: var(--marca); color: #fff; padding: calc(14px + env(safe-area-inset-top)) 18px 14px; }
+  header { background: var(--marca); color: #fff; padding: calc(14px + env(safe-area-inset-top)) 18px 14px;
+    position: sticky; top: 0; z-index: 5; }
   @media (prefers-color-scheme: dark) { header { background: #1c2b40; } }
   header h1 { margin: 0; font-size: 20px; font-weight: 650; }
   header .st { font-size: 13px; opacity: .85; margin-top: 2px; }
@@ -41,9 +42,12 @@
   .p-amar { background: var(--amar-bg); color: var(--amar); }
   .p-verde { background: var(--verde-bg); color: var(--verde); }
   .p-azul { background: var(--azul-bg); color: var(--marca); }
-  .proc { font-weight: 600; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .partes { font-weight: 650; margin-top: 6px; }
+  .proc { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--sub); }
   .orgao, .obs { font-size: 14px; color: var(--sub); }
   .obs { margin-top: 4px; }
+  .nota { margin-top: 8px; font-size: 14px; background: var(--azul-bg); border-radius: 8px; padding: 8px 10px;
+    white-space: pre-wrap; }
   details { margin-top: 10px; }
   summary { cursor: pointer; color: var(--marca); font-size: 14px; font-weight: 600; }
   .teor { font-size: 14px; white-space: pre-wrap; margin-top: 8px; max-height: 320px; overflow: auto;
@@ -55,17 +59,27 @@
     text-decoration: none; display: inline-block; }
   .prim { background: var(--marca); color: #fff; border-color: var(--marca); }
   @media (prefers-color-scheme: dark) { .prim { color: #10151c; } }
+  .perigo { color: var(--verm); }
+  input, select, textarea { font: inherit; font-size: 16px; padding: 9px 10px; border-radius: 10px;
+    border: 1px solid var(--linha); background: var(--card); color: var(--txt); width: 100%; }
+  textarea { min-height: 80px; resize: vertical; }
+  label { font-size: 13px; color: var(--sub); display: block; margin: 10px 0 4px; }
+  .form { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--linha); }
+  .linha2 { display: flex; gap: 8px; } .linha2 > * { flex: 1; }
+  .abas { display: flex; gap: 6px; margin: 4px 0 6px; }
+  .abas button { flex: 1; padding: 8px 6px; }
+  .abas button.ativa { background: var(--marca); color: #fff; border-color: var(--marca); }
+  @media (prefers-color-scheme: dark) { .abas button.ativa { color: #10151c; } }
   .vazio { color: var(--sub); font-size: 15px; padding: 6px 4px; }
   .aviso { background: var(--amar-bg); color: var(--amar); border-radius: 12px; padding: 12px 14px;
     font-size: 14px; margin-bottom: 10px; }
   .aviso.erro { background: var(--verm-bg); color: var(--verm); }
   #login { max-width: 380px; margin: 12vh auto 0; padding: 0 18px; }
-  #login input { width: 100%; font: inherit; font-size: 20px; letter-spacing: .08em; text-transform: uppercase;
-    padding: 12px; border-radius: 10px; border: 1px solid var(--linha); background: var(--card); color: var(--txt);
-    margin: 12px 0; text-align: center; }
+  #login input { font-size: 20px; letter-spacing: .08em; text-transform: uppercase; margin: 12px 0; text-align: center; }
   #login .prim { width: 100%; padding: 12px; font-size: 16px; }
   .msg { min-height: 1.4em; color: var(--verm); font-size: 14px; margin-top: 8px; text-align: center; }
   footer { color: var(--sub); font-size: 12px; text-align: center; padding: 20px 14px 30px; }
+  footer button { margin: 4px; }
   .oculto { display: none !important; }
 </style>
 </head>
@@ -86,19 +100,31 @@
   </header>
   <main>
     <div id="avisos"></div>
-    <h2>Prazos em aberto</h2>
-    <div id="abertos"></div>
-    <h2>Conferir (sem prazo identificado)</h2>
-    <div id="conferir"></div>
-    <details id="blocoCumpridos">
-      <summary style="margin:22px 4px 8px">Cumpridos</summary>
-      <div id="cumpridos" style="margin-top:8px"></div>
-    </details>
+    <input id="busca" type="search" placeholder="Buscar por processo, parte, vara, texto ou nota">
+    <div class="abas" style="margin-top:10px">
+      <button data-aba="pendentes" class="ativa">Pendentes</button>
+      <button data-aba="historico">Histórico</button>
+      <button data-aba="cumpridos">Cumpridos</button>
+    </div>
+    <div id="conteudo"></div>
+    <div class="card" style="margin-top:18px">
+      <details id="novoAvulso"><summary>+ Cadastrar prazo avulso (ex.: expediente só do PJe)</summary>
+        <div class="form">
+          <label>Processo</label><input id="avProc" placeholder="0000000-00.0000.8.08.0000">
+          <label>Partes (opcional)</label><input id="avPartes" placeholder="Autor x Réu">
+          <label>Vara/órgão (opcional)</label><input id="avOrgao">
+          <label>O que fazer</label><textarea id="avDesc" placeholder="Ex.: manifestar sobre laudo pericial"></textarea>
+          <label>Data fatal</label><input id="avFatal" type="date">
+          <div class="acoes"><button class="prim" id="avSalvar">Cadastrar</button></div>
+        </div>
+      </details>
+    </div>
   </main>
   <footer>
     Cálculo conservador a partir do DJEN. Confira sempre no PJe.<br>
-    Expedientes intimados só pelo sistema PJe não aparecem aqui.<br><br>
+    Expedientes intimados só pelo sistema PJe não aparecem sozinhos: cadastre como prazo avulso.<br><br>
     <button id="testarPush">Testar notificação</button>
+    <button id="trocarCodigo">Trocar código e sair dos outros aparelhos</button>
     <button id="sair">Sair deste aparelho</button>
   </footer>
 </div>
@@ -107,7 +133,7 @@
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const br = (iso) => iso ? iso.slice(0,10).split("-").reverse().join("/") : "—";
-let dados = null;
+let dados = null, aba = "pendentes", porChave = {};
 
 async function api(caminho, corpo) {
   const r = await fetch(caminho, corpo === undefined ? {credentials: "same-origin"} :
@@ -130,42 +156,90 @@ $("#entrar").onclick = async () => {
   } catch (e) { $("#msgLogin").textContent = "Sem conexão. Tente de novo."; }
 };
 $("#codigo").addEventListener("keydown", e => { if (e.key === "Enter") $("#entrar").click(); });
-$("#testarPush").onclick = () => testarNotificacao();
 $("#sair").onclick = async () => { await fetch("/api/sair", {method: "POST", credentials: "same-origin"}); mostrarLogin(); };
+$("#trocarCodigo").onclick = async () => {
+  if (!confirm("Gerar um novo código? Todos os outros aparelhos serão desconectados e precisarão do código novo.")) return;
+  try { const r = await api("/api/trocar-codigo", {}); alert("Novo código de acesso (anote):\n\n" + r.codigo); }
+  catch (e) { alert("Falha: " + e.message); }
+};
+$("#testarPush").onclick = () => testarNotificacao();
+$("#busca").addEventListener("input", () => render());
+document.querySelectorAll(".abas button").forEach(b => b.onclick = () => {
+  aba = b.dataset.aba;
+  document.querySelectorAll(".abas button").forEach(x => x.classList.toggle("ativa", x === b));
+  render();
+});
 
 function pilula(r) {
   const d = r.dias_restantes;
-  if (d === undefined) return "";
+  if (d === undefined || d === null) return "";
+  if (d < 0) return '<span class="pill p-azul">vencido</span>';
   if (d === 0) return '<span class="pill p-verm">vence hoje</span>';
   if (d <= 3) return `<span class="pill p-verm">${d} dia${d>1?"s":""}</span>`;
   if (d <= 7) return `<span class="pill p-amar">${d} dias</span>`;
   return `<span class="pill p-verde">${d} dias</span>`;
 }
 
-function cartao(r, modo) {
+function cartao(r) {
+  porChave[r.chave] = r;
   const alt = r.fatal_alternativo ? ` <span class="orgao">(ou ${br(r.fatal_alternativo)})</span>` : "";
-  const cab = modo === "aberto"
+  const cab = r.fatal
     ? `<div class="topo"><div class="fatal">${br(r.fatal)}${alt}</div>${pilula(r)}</div>`
-    : `<div class="topo"><div class="orgao">Disponibilizada em ${br(r.disponibilizacao)}</div>
+    : `<div class="topo"><div class="orgao">${r.manual ? "Prazo avulso" : "Disponibilizada em " + br(r.disponibilizacao)}</div>
        <span class="pill p-azul">${esc(r.tipo || "Comunicação")}</span></div>`;
-  const botao = modo === "cumprido"
-    ? `<button data-chave="${esc(r.chave)}" data-acao="desfazer">Desfazer</button>`
-    : `<button class="prim" data-chave="${esc(r.chave)}" data-acao="cumprir">Marcar cumprido</button>`;
+  const k = esc(r.chave);
+  const botaoCumprir = r.cumprido
+    ? `<button data-acao="desfazer" data-chave="${k}">Desfazer cumprido</button>`
+    : `<button class="prim" data-acao="cumprir" data-chave="${k}">Marcar cumprido</button>`;
   const pje = r.link && /^https:\/\/[a-z0-9.-]+\.jus\.br\//i.test(r.link)
     ? `<a class="btn" href="${esc(r.link)}" target="_blank" rel="noopener">Abrir documento</a>` : "";
-  return `<div class="card">${cab}
+  const botaoPrazo = r.manual ? `<button class="perigo" data-acao="excluir" data-chave="${k}">Excluir</button>`
+    : `<button data-acao="form-prazo" data-chave="${k}">${r.ajustado ? "Alterar prazo" : "Definir prazo"}</button>`;
+  return `<div class="card" id="c-${k}">${cab}
+    ${r.partes ? `<div class="partes">${esc(r.partes)}</div>` : ""}
     <div class="proc">${esc(r.processo)}</div>
     <div class="orgao">${esc(r.orgao)}</div>
     <div class="obs">${esc(r.prazo_obs)}</div>
+    ${r.nota ? `<div class="nota">📝 ${esc(r.nota)}</div>` : ""}
     <details><summary>Teor e contagem</summary>
       ${r.contagem ? `<div class="contagem">${esc(r.contagem)}</div>` : ""}
       <div class="teor">${esc(r.texto)}</div>
     </details>
-    <div class="acoes">${botao}${pje}</div></div>`;
+    <div class="acoes">${botaoCumprir}${botaoPrazo}<button data-acao="form-nota" data-chave="${k}">Nota</button>${pje}</div>
+    <div class="formslot"></div></div>`;
+}
+
+function formPrazo(r) {
+  const k = esc(r.chave);
+  return `<div class="form">
+    <label>Prazo em dias</label>
+    <div class="linha2"><input type="number" min="1" max="365" id="fd-${k}" value="${r.prazo_dias || ""}">
+      <select id="ft-${k}"><option value="uteis">dias úteis</option><option value="corridos" ${r.prazo_tipo === "corridos" ? "selected" : ""}>dias corridos</option></select></div>
+    <label>ou data fatal exata</label><input type="date" id="ff-${k}">
+    <div class="acoes"><button class="prim" data-acao="salvar-prazo" data-chave="${k}">Salvar</button>
+      ${r.ajustado ? `<button data-acao="limpar-prazo" data-chave="${k}">Voltar ao automático</button>` : ""}</div></div>`;
+}
+
+function formNota(r) {
+  const k = esc(r.chave);
+  return `<div class="form"><label>Anotação</label><textarea id="fn-${k}">${esc(r.nota)}</textarea>
+    <div class="acoes"><button class="prim" data-acao="salvar-nota" data-chave="${k}">Salvar nota</button></div></div>`;
+}
+
+function filtrar(lista) {
+  const q = $("#busca").value.trim().toLowerCase();
+  if (!q) return lista;
+  return lista.filter(r => [r.processo, r.partes, r.orgao, r.texto, r.nota, r.prazo_obs]
+    .some(v => (v || "").toLowerCase().includes(q)));
+}
+
+function secao(titulo, lista, vazio) {
+  return `<h2>${titulo}</h2>` + (lista.length ? lista.map(cartao).join("") : `<div class="vazio">${vazio}</div>`);
 }
 
 function render() {
   const d = dados;
+  porChave = {};
   const ult = d.ultima_consulta ? new Date(d.ultima_consulta) : null;
   $("#status").textContent = ult ? `Última consulta ao DJEN: ${ult.toLocaleString("pt-BR", {dateStyle: "short", timeStyle: "short"})}` : "Aguardando a primeira consulta";
   const av = [];
@@ -173,19 +247,55 @@ function render() {
   if (ult && (Date.now() - ult.getTime()) > 3 * 3600 * 1000) av.push(`<div class="aviso erro">A rotina não consulta o DJEN há mais de 3 horas. Algo pode ter parado.</div>`);
   av.push(avisoNotificacao());
   $("#avisos").innerHTML = av.join("");
-  $("#abertos").innerHTML = d.abertos.length ? d.abertos.map(r => cartao(r, "aberto")).join("") : '<div class="vazio">Nenhum prazo em aberto.</div>';
-  $("#conferir").innerHTML = d.conferir.length ? d.conferir.map(r => cartao(r, "conferir")).join("") : '<div class="vazio">Nada a conferir.</div>';
-  $("#cumpridos").innerHTML = d.cumpridos.length ? d.cumpridos.map(r => cartao(r, "cumprido")).join("") : '<div class="vazio">Nenhum.</div>';
+  let html;
+  if (aba === "pendentes") {
+    html = secao("Prazos em aberto", filtrar(d.abertos), "Nenhum prazo em aberto.") +
+           secao("Conferir (sem prazo definido)", filtrar(d.conferir), "Nada a conferir.");
+  } else if (aba === "historico") {
+    html = secao(`Histórico (${d.historico.length})`, filtrar(d.historico), "Nada encontrado.");
+  } else {
+    html = secao("Cumpridos", filtrar(d.cumpridos), "Nenhum.");
+  }
+  $("#conteudo").innerHTML = html;
   ligarBotaoNotificacao();
 }
 
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("button[data-acao]");
   if (!b) return;
+  const chave = b.dataset.chave, r = porChave[chave], acao = b.dataset.acao;
+  const slot = b.closest(".card")?.querySelector(".formslot");
+  if (acao === "form-prazo") { slot.innerHTML = slot.innerHTML ? "" : formPrazo(r); return; }
+  if (acao === "form-nota") { slot.innerHTML = slot.innerHTML ? "" : formNota(r); return; }
   b.disabled = true;
-  try { await api("/api/cumprido", {chave: b.dataset.chave, cumprido: b.dataset.acao === "cumprir"}); await carregar(); }
-  catch (err) { b.disabled = false; alert("Não foi possível salvar: " + err.message); }
+  try {
+    if (acao === "cumprir" || acao === "desfazer") await api("/api/cumprido", {chave, cumprido: acao === "cumprir"});
+    else if (acao === "salvar-prazo") {
+      const fatal = $("#ff-" + CSS.escape(chave)).value, dias = $("#fd-" + CSS.escape(chave)).value;
+      if (!fatal && !dias) { alert("Informe os dias ou a data fatal."); b.disabled = false; return; }
+      await api("/api/ajuste", fatal ? {chave, fatal} : {chave, dias: Number(dias), tipo: $("#ft-" + CSS.escape(chave)).value});
+    }
+    else if (acao === "limpar-prazo") await api("/api/ajuste", {chave, limpar: true});
+    else if (acao === "salvar-nota") await api("/api/nota", {chave, texto: $("#fn-" + CSS.escape(chave)).value});
+    else if (acao === "excluir") {
+      if (!confirm("Excluir este prazo avulso?")) { b.disabled = false; return; }
+      await api("/api/manual", {excluir: chave});
+    }
+    await carregar();
+  } catch (err) { b.disabled = false; if (err.message !== "login") alert("Não foi possível salvar: " + err.message); }
 });
+
+$("#avSalvar").onclick = async () => {
+  const corpo = {processo: $("#avProc").value, partes: $("#avPartes").value, orgao: $("#avOrgao").value,
+                 descricao: $("#avDesc").value, fatal: $("#avFatal").value};
+  if (!corpo.processo || !corpo.fatal) { alert("Informe o processo e a data fatal."); return; }
+  try {
+    await api("/api/manual", corpo);
+    ["#avProc", "#avPartes", "#avOrgao", "#avDesc", "#avFatal"].forEach(s => $(s).value = "");
+    $("#novoAvulso").open = false;
+    await carregar();
+  } catch (err) { if (err.message !== "login") alert("Não foi possível cadastrar: " + err.message); }
+};
 
 // --- Notificações ------------------------------------------------------------------
 const instalado = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
@@ -196,7 +306,8 @@ function avisoNotificacao() {
   if (ehIOS() && !instalado())
     return `<div class="aviso">Para receber notificações no iPhone: toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b> e abra o app pelo ícone.</div>`;
   if (!("PushManager" in window) || !("Notification" in window)) return "";
-  if (Notification.permission === "granted" && localStorage.getItem("push_ok") === "1") return "";
+  let ok = null; try { ok = localStorage.getItem("push_ok"); } catch (_) {}
+  if (Notification.permission === "granted" && ok === "1") return "";
   if (Notification.permission === "denied")
     return `<div class="aviso">As notificações estão bloqueadas para este app nas configurações do aparelho.</div>`;
   return `<div class="aviso">Ative as notificações para ser avisado de cada intimação nova.<div class="acoes"><button class="prim" id="ativarPush">Ativar notificações</button></div></div>`;
@@ -208,6 +319,13 @@ function b64ParaBytes(b64) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
+async function inscreverEste() {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = (await reg.pushManager.getSubscription()) ||
+    await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ParaBytes(dados.vapid_publica)});
+  await api("/api/push/inscrever", sub.toJSON());
+}
+
 function ligarBotaoNotificacao() {
   const b = $("#ativarPush");
   if (!b) return;
@@ -216,9 +334,7 @@ function ligarBotaoNotificacao() {
     try {
       const perm = await Notification.requestPermission();
       if (perm !== "granted") { b.disabled = false; return; }
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ParaBytes(dados.vapid_publica)});
-      await api("/api/push/inscrever", sub.toJSON());
+      await inscreverEste();
       await api("/api/push/teste", {});
       try { localStorage.setItem("push_ok", "1"); } catch (_) {}
       alert("Notificações ativadas. Deve chegar uma notificação de teste em instantes.");
@@ -231,16 +347,10 @@ async function testarNotificacao() {
   const b = $("#testarPush");
   b.disabled = true;
   try {
-    // reinscreve este aparelho (caso a inscrição tenha mudado) e envia o teste
-    if ("serviceWorker" in navigator && "PushManager" in window && Notification.permission === "granted") {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = (await reg.pushManager.getSubscription()) ||
-        await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ParaBytes(dados.vapid_publica)});
-      await api("/api/push/inscrever", sub.toJSON());
-    }
+    if ("serviceWorker" in navigator && "PushManager" in window && Notification.permission === "granted") await inscreverEste();
     const r = await api("/api/push/teste", {});
     alert(`Teste enviado para ${r.enviados} aparelho(s).` + (r.erros && r.erros.length ? "\nAvisos: " + r.erros.join("; ") : ""));
-  } catch (err) { alert("Falha no teste: " + err.message); }
+  } catch (err) { if (err.message !== "login") alert("Falha no teste: " + err.message); }
   b.disabled = false;
 }
 
