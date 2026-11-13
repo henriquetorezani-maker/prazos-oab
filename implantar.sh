@@ -29,8 +29,15 @@ gcloud storage buckets describe "gs://$BUCKET" >/dev/null 2>&1 || \
 echo "==> Conta de serviço da rotina"
 gcloud iam service-accounts describe "$SA" >/dev/null 2>&1 || \
   gcloud iam service-accounts create "$SA_NOME" --display-name="Rotina prazos OAB"
-gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
-  --member="serviceAccount:$SA" --role="roles/storage.objectAdmin" >/dev/null
+# Conta recém-criada leva alguns segundos para ser reconhecida pelos outros serviços
+for tentativa in 1 2 3 4 5 6; do
+  if gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
+       --member="serviceAccount:$SA" --role="roles/storage.objectAdmin" >/dev/null 2>&1; then
+    break
+  fi
+  [[ $tentativa == 6 ]] && { echo "Não consegui dar acesso ao bucket. Rode o script de novo em 1 minuto."; exit 1; }
+  echo "   aguardando a conta de serviço propagar ($tentativa/6)..."; sleep 15
+done
 
 echo "==> Permissão de build para a conta padrão (projetos novos exigem)"
 gcloud projects add-iam-policy-binding "$PROJETO" \
