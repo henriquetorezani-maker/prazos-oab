@@ -169,6 +169,9 @@ def main() -> int:
 
     novas = []
     for item in brutos:
+        if item.get("ativo") is False or item.get("data_cancelamento"):
+            print(f"Ignorada (cancelada no DJEN): {item.get('numero_processo')} {item.get('motivo_cancelamento')}")
+            continue
         c = comunica.normalizar(item)
         reg = enriquecer(c)
         registros[c.chave] = reg
