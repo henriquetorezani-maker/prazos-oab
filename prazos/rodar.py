@@ -166,14 +166,19 @@ def executar() -> int:
         n = estado["falhas_seguidas"]
         if n == 1 or n % 6 == 0:
             notifica.enviar(f"⚠️ Falha na consulta ao Comunica ({n}ª seguida): {e}\n"
-                            "Enquanto isso, confira as intimações manualmente.")
+                            "Enquanto isso, confira as intimações manualmente.",
+                            titulo="⚠️ Falha na consulta",
+                            corpo="O Comunica não respondeu. Confira as intimações manualmente.",
+                            tag="falha")
         _gravar(ESTADO, estado)
         print(f"FALHA: {e}")
         return 1
 
     if estado.get("falhas_seguidas"):
-        notifica.enviar("✅ Consulta ao Comunica voltou a funcionar.")
+        notifica.enviar("✅ Consulta ao Comunica voltou a funcionar.",
+                        titulo="✅ Consulta normalizada", tag="falha")
     estado["falhas_seguidas"] = 0
+    estado["ultima_consulta"] = agora.isoformat(timespec="minutes")
 
     novas = []
     for item in brutos:
@@ -188,23 +193,53 @@ def executar() -> int:
             novas.append(reg)
 
     lista = sorted(registros.values(), key=lambda r: r.get("disponibilizacao", ""))
+    ativos = pendentes(lista)
     print(f"{len(brutos)} comunicações no período; {len(novas)} novas.")
 
     if primeira:
         notifica.enviar(f"🚀 Rotina iniciada. Carga inicial: {len(novas)} comunicações "
-                        f"desde {inicio:%d/%m/%Y}.\n\n" + mensagem_resumo(lista, hoje))
+                        f"desde {inicio:%d/%m/%Y}.\n\n" + mensagem_resumo(ativos, hoje),
+                        titulo="🚀 Rotina iniciada",
+                        corpo=f"{len(novas)} comunicações carregadas. Abra o app para ver os prazos.",
+                        tag="resumo")
         estado["ultimo_resumo"] = hoje.isoformat()
     else:
         for r in sorted(novas, key=lambda r: r.get("disponibilizacao", "")):
-            notifica.enviar(mensagem_nova(r))
+            fatal = f" — fatal {_br(r['fatal'])}" if r.get("fatal") else ""
+            notifica.enviar(mensagem_nova(r), titulo=f"🔔 Nova intimação{fatal}",
+                            corpo=f"{r['processo']} — {r['orgao'].split(' - ')[-1]}. {r['prazo_obs']}",
+                            tag=r["chave"])
         if agora.hour >= HORA_RESUMO and estado.get("ultimo_resumo") != hoje.isoformat():
-            notifica.enviar(mensagem_resumo(lista, hoje))
+            notifica.enviar(mensagem_resumo(ativos, hoje), titulo="📋 Resumo do dia",
+                            corpo=resumo_curto(ativos, hoje), tag="resumo")
             estado["ultimo_resumo"] = hoje.isoformat()
 
     _gravar(INTIMACOES, lista)
     _gravar(ESTADO, estado)
-    PAINEL.write_text(painel(lista, agora), encoding="utf-8")
+    PAINEL.write_text(painel(ativos, agora), encoding="utf-8")
     return 0
+
+
+def pendentes(lista: list[dict]) -> list[dict]:
+    """Remove repetidas (mesmo processo, data e teor) e as marcadas como cumpridas no app."""
+    status = armazenamento.ler_json("data/status.json", {})
+    vistos, out = set(), []
+    for r in lista:
+        k = (r.get("processo"), r.get("disponibilizacao"), r.get("fatal"), (r.get("texto") or "")[:300])
+        if k in vistos or r["chave"] in status:
+            continue
+        vistos.add(k)
+        out.append(r)
+    return out
+
+
+def resumo_curto(ativos: list[dict], hoje: date) -> str:
+    ab = abertos(ativos, hoje)
+    if not ab:
+        return "Rotina funcionando. Nenhum prazo em aberto."
+    prox = ab[0]
+    return (f"{len(ab)} prazo(s) em aberto. Próximo: {_br(prox['fatal'])} — {prox['processo']}. "
+            "Rotina funcionando.")
 
 
 if __name__ == "__main__":

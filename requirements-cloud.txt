@@ -1,2 +1,6 @@
 requests>=2.31
 google-cloud-storage>=2.16
+flask>=3.0
+gunicorn>=22
+pywebpush>=2.0
+cryptography>=42

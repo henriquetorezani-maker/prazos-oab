@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prazos OAB</title>
+<meta name="theme-color" content="#1f3a5f">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icone-192.png">
+<link rel="apple-touch-icon" href="/icone-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prazos">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --txt: #1b1f24; --sub: #5d6670; --linha: #e3e6ea;
+    --marca: #1f3a5f; --verm: #b42318; --verm-bg: #fdecea; --amar: #8a5a00; --amar-bg: #fff4dc;
+    --verde: #1e7a46; --verde-bg: #e6f4ec; --azul-bg: #e8eef6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121417; --card: #1c1f24; --txt: #eceff3; --sub: #9aa3ad; --linha: #2c3138;
+      --marca: #8fb3e0; --verm: #ff8a80; --verm-bg: #3a1d1b; --amar: #ffcc66; --amar-bg: #3a2e14;
+      --verde: #7fd6a0; --verde-bg: #183326; --azul-bg: #1e2a3a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--txt); padding-bottom: env(safe-area-inset-bottom); }
+  header { background: var(--marca); color: #fff; padding: calc(14px + env(safe-area-inset-top)) 18px 14px; }
+  @media (prefers-color-scheme: dark) { header { background: #1c2b40; } }
+  header h1 { margin: 0; font-size: 20px; font-weight: 650; }
+  header .st { font-size: 13px; opacity: .85; margin-top: 2px; }
+  main { max-width: 680px; margin: 0 auto; padding: 14px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--sub);
+    margin: 22px 4px 8px; font-weight: 650; }
+  .card { background: var(--card); border: 1px solid var(--linha); border-radius: 14px;
+    padding: 14px; margin-bottom: 10px; }
+  .topo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .fatal { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pill { font-size: 12px; font-weight: 650; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+  .p-verm { background: var(--verm-bg); color: var(--verm); }
+  .p-amar { background: var(--amar-bg); color: var(--amar); }
+  .p-verde { background: var(--verde-bg); color: var(--verde); }
+  .p-azul { background: var(--azul-bg); color: var(--marca); }
+  .proc { font-weight: 600; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .orgao, .obs { font-size: 14px; color: var(--sub); }
+  .obs { margin-top: 4px; }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--marca); font-size: 14px; font-weight: 600; }
+  .teor { font-size: 14px; white-space: pre-wrap; margin-top: 8px; max-height: 320px; overflow: auto;
+    border-left: 3px solid var(--linha); padding-left: 10px; }
+  .contagem { font-size: 13px; color: var(--sub); margin-top: 8px; }
+  .acoes { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  button, .btn { font: inherit; font-size: 14px; font-weight: 600; border-radius: 10px; padding: 9px 14px;
+    border: 1px solid var(--linha); background: var(--card); color: var(--txt); cursor: pointer;
+    text-decoration: none; display: inline-block; }
+  .prim { background: var(--marca); color: #fff; border-color: var(--marca); }
+  @media (prefers-color-scheme: dark) { .prim { color: #10151c; } }
+  .vazio { color: var(--sub); font-size: 15px; padding: 6px 4px; }
+  .aviso { background: var(--amar-bg); color: var(--amar); border-radius: 12px; padding: 12px 14px;
+    font-size: 14px; margin-bottom: 10px; }
+  .aviso.erro { background: var(--verm-bg); color: var(--verm); }
+  #login { max-width: 380px; margin: 12vh auto 0; padding: 0 18px; }
+  #login input { width: 100%; font: inherit; font-size: 20px; letter-spacing: .08em; text-transform: uppercase;
+    padding: 12px; border-radius: 10px; border: 1px solid var(--linha); background: var(--card); color: var(--txt);
+    margin: 12px 0; text-align: center; }
+  #login .prim { width: 100%; padding: 12px; font-size: 16px; }
+  .msg { min-height: 1.4em; color: var(--verm); font-size: 14px; margin-top: 8px; text-align: center; }
+  footer { color: var(--sub); font-size: 12px; text-align: center; padding: 20px 14px 30px; }
+  .oculto { display: none !important; }
+</style>
+</head>
+<body>
+
+<section id="login" class="oculto">
+  <h1 style="font-size:22px;margin:0 0 4px">Prazos OAB</h1>
+  <div class="orgao">Digite o código de acesso exibido no Cloud Shell.</div>
+  <input id="codigo" autocomplete="one-time-code" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX-XXXX">
+  <button class="prim" id="entrar">Entrar</button>
+  <div class="msg" id="msgLogin"></div>
+</section>
+
+<div id="appView" class="oculto">
+  <header>
+    <h1>Prazos — OAB/ES 43.793</h1>
+    <div class="st" id="status">Carregando…</div>
+  </header>
+  <main>
+    <div id="avisos"></div>
+    <h2>Prazos em aberto</h2>
+    <div id="abertos"></div>
+    <h2>Conferir (sem prazo identificado)</h2>
+    <div id="conferir"></div>
+    <details id="blocoCumpridos">
+      <summary style="margin:22px 4px 8px">Cumpridos</summary>
+      <div id="cumpridos" style="margin-top:8px"></div>
+    </details>
+  </main>
+  <footer>
+    Cálculo conservador a partir do DJEN. Confira sempre no PJe.<br>
+    Expedientes intimados só pelo sistema PJe não aparecem aqui.<br><br>
+    <button id="sair">Sair deste aparelho</button>
+  </footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const br = (iso) => iso ? iso.slice(0,10).split("-").reverse().join("/") : "—";
+let dados = null;
+
+async function api(caminho, corpo) {
+  const r = await fetch(caminho, corpo === undefined ? {credentials: "same-origin"} :
+    {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json"}, body: JSON.stringify(corpo)});
+  if (r.status === 401) { mostrarLogin(); throw new Error("login"); }
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erro || ("HTTP " + r.status));
+  return r.json();
+}
+
+function mostrarLogin() { $("#appView").classList.add("oculto"); $("#login").classList.remove("oculto"); }
+function mostrarApp() { $("#login").classList.add("oculto"); $("#appView").classList.remove("oculto"); }
+
+$("#entrar").onclick = async () => {
+  $("#msgLogin").textContent = "";
+  try {
+    const r = await fetch("/api/entrar", {method: "POST", credentials: "same-origin",
+      headers: {"Content-Type": "application/json"}, body: JSON.stringify({codigo: $("#codigo").value})});
+    if (!r.ok) { $("#msgLogin").textContent = "Código inválido."; return; }
+    await carregar();
+  } catch (e) { $("#msgLogin").textContent = "Sem conexão. Tente de novo."; }
+};
+$("#codigo").addEventListener("keydown", e => { if (e.key === "Enter") $("#entrar").click(); });
+$("#sair").onclick = async () => { await fetch("/api/sair", {method: "POST", credentials: "same-origin"}); mostrarLogin(); };
+
+function pilula(r) {
+  const d = r.dias_restantes;
+  if (d === undefined) return "";
+  if (d === 0) return '<span class="pill p-verm">vence hoje</span>';
+  if (d <= 3) return `<span class="pill p-verm">${d} dia${d>1?"s":""}</span>`;
+  if (d <= 7) return `<span class="pill p-amar">${d} dias</span>`;
+  return `<span class="pill p-verde">${d} dias</span>`;
+}
+
+function cartao(r, modo) {
+  const alt = r.fatal_alternativo ? ` <span class="orgao">(ou ${br(r.fatal_alternativo)})</span>` : "";
+  const cab = modo === "aberto"
+    ? `<div class="topo"><div class="fatal">${br(r.fatal)}${alt}</div>${pilula(r)}</div>`
+    : `<div class="topo"><div class="orgao">Disponibilizada em ${br(r.disponibilizacao)}</div>
+       <span class="pill p-azul">${esc(r.tipo || "Comunicação")}</span></div>`;
+  const botao = modo === "cumprido"
+    ? `<button data-chave="${esc(r.chave)}" data-acao="desfazer">Desfazer</button>`
+    : `<button class="prim" data-chave="${esc(r.chave)}" data-acao="cumprir">Marcar cumprido</button>`;
+  const pje = r.link && /^https:\/\/[a-z0-9.-]+\.jus\.br\//i.test(r.link)
+    ? `<a class="btn" href="${esc(r.link)}" target="_blank" rel="noopener">Abrir documento</a>` : "";
+  return `<div class="card">${cab}
+    <div class="proc">${esc(r.processo)}</div>
+    <div class="orgao">${esc(r.orgao)}</div>
+    <div class="obs">${esc(r.prazo_obs)}</div>
+    <details><summary>Teor e contagem</summary>
+      ${r.contagem ? `<div class="contagem">${esc(r.contagem)}</div>` : ""}
+      <div class="teor">${esc(r.texto)}</div>
+    </details>
+    <div class="acoes">${botao}${pje}</div></div>`;
+}
+
+function render() {
+  const d = dados;
+  const ult = d.ultima_consulta ? new Date(d.ultima_consulta) : null;
+  $("#status").textContent = ult ? `Última consulta ao DJEN: ${ult.toLocaleString("pt-BR", {dateStyle: "short", timeStyle: "short"})}` : "Aguardando a primeira consulta";
+  const av = [];
+  if (d.falhas_seguidas) av.push(`<div class="aviso erro">A consulta ao DJEN falhou ${d.falhas_seguidas} vez(es) seguida(s). Confira as intimações manualmente.</div>`);
+  if (ult && (Date.now() - ult.getTime()) > 3 * 3600 * 1000) av.push(`<div class="aviso erro">A rotina não consulta o DJEN há mais de 3 horas. Algo pode ter parado.</div>`);
+  av.push(avisoNotificacao());
+  $("#avisos").innerHTML = av.join("");
+  $("#abertos").innerHTML = d.abertos.length ? d.abertos.map(r => cartao(r, "aberto")).join("") : '<div class="vazio">Nenhum prazo em aberto.</div>';
+  $("#conferir").innerHTML = d.conferir.length ? d.conferir.map(r => cartao(r, "conferir")).join("") : '<div class="vazio">Nada a conferir.</div>';
+  $("#cumpridos").innerHTML = d.cumpridos.length ? d.cumpridos.map(r => cartao(r, "cumprido")).join("") : '<div class="vazio">Nenhum.</div>';
+  ligarBotaoNotificacao();
+}
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-acao]");
+  if (!b) return;
+  b.disabled = true;
+  try { await api("/api/cumprido", {chave: b.dataset.chave, cumprido: b.dataset.acao === "cumprir"}); await carregar(); }
+  catch (err) { b.disabled = false; alert("Não foi possível salvar: " + err.message); }
+});
+
+// --- Notificações ------------------------------------------------------------------
+const instalado = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+const ehIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+function avisoNotificacao() {
+  if (!("serviceWorker" in navigator)) return "";
+  if (ehIOS() && !instalado())
+    return `<div class="aviso">Para receber notificações no iPhone: toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b> e abra o app pelo ícone.</div>`;
+  if (!("PushManager" in window) || !("Notification" in window)) return "";
+  if (Notification.permission === "granted" && localStorage.getItem("push_ok") === "1") return "";
+  if (Notification.permission === "denied")
+    return `<div class="aviso">As notificações estão bloqueadas para este app nas configurações do aparelho.</div>`;
+  return `<div class="aviso">Ative as notificações para ser avisado de cada intimação nova.<div class="acoes"><button class="prim" id="ativarPush">Ativar notificações</button></div></div>`;
+}
+
+function b64ParaBytes(b64) {
+  const pad = "=".repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+function ligarBotaoNotificacao() {
+  const b = $("#ativarPush");
+  if (!b) return;
+  b.onclick = async () => {
+    b.disabled = true;
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { b.disabled = false; return; }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ParaBytes(dados.vapid_publica)});
+      await api("/api/push/inscrever", sub.toJSON());
+      await api("/api/push/teste", {});
+      try { localStorage.setItem("push_ok", "1"); } catch (_) {}
+      render();
+    } catch (err) { b.disabled = false; alert("Não foi possível ativar: " + err.message); }
+  };
+}
+
+async function carregar() {
+  try { dados = await api("/api/dados"); mostrarApp(); render(); }
+  catch (e) { if (e.message !== "login") $("#status").textContent = "Sem conexão: " + e.message; }
+}
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+document.addEventListener("visibilitychange", () => { if (!document.hidden && dados) carregar(); });
+carregar();
+</script>
+</body>
+</html>

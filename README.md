@@ -8,6 +8,17 @@ Acompanhamento automático das intimações da OAB/ES 43.793 no DJEN (Comunica/C
 
 O Comunica bloqueia acessos de fora do Brasil (o GitHub Actions recebeu HTTP 403). Por isso a rotina roda como **Cloud Run Job no Google Cloud, em São Paulo** (`southamerica-east1`), disparada de hora em hora pelo Cloud Scheduler. O estado fica num bucket privado do Cloud Storage. Para instalar ou atualizar, rode `bash implantar.sh ID_DO_PROJETO` no Cloud Shell. O GitHub Actions roda só os testes.
 
+## Aplicativo (PWA)
+
+O serviço `prazos-oab-app`, no Cloud Run, publica um aplicativo web instalável. Ele exige o código de acesso, gerado na primeira implantação e guardado em `config/app.json`, no bucket privado. O aplicativo:
+
+- lista os prazos em aberto, as comunicações a conferir e as cumpridas;
+- mostra o teor e a contagem de cada prazo;
+- tem o botão "Marcar cumprido";
+- envia notificações push (Web Push/VAPID).
+
+No iPhone, as notificações exigem que o app esteja adicionado à Tela de Início. O Telegram continua opcional, como canal reserva.
+
 ## Como funciona
 
 - O Cloud Scheduler dispara `python -m prazos.rodar` de hora em hora.

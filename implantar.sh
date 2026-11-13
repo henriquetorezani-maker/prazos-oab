@@ -70,11 +70,34 @@ else
     --http-method POST --oauth-service-account-email "$SA" >/dev/null
 fi
 
-echo "==> Primeira execução (teste)"
+echo "==> Aplicativo (mesma imagem do job, como serviço web)"
+IMAGEM=$(gcloud run jobs describe "$JOB" --region "$REGIAO" \
+  --format='value(spec.template.spec.template.spec.containers[0].image)')
+APP_OK=1
+if [[ -n "$IMAGEM" ]]; then ORIGEM=(--image "$IMAGEM"); else ORIGEM=(--source .); fi
+gcloud run deploy "${JOB}-app" "${ORIGEM[@]}" --region "$REGIAO" --quiet \
+  --service-account "$SA" --set-env-vars "GCS_BUCKET=$BUCKET" \
+  --allow-unauthenticated --min-instances 0 --max-instances 1 --memory 512Mi || APP_OK=0
+
+echo "==> Execução de teste da rotina"
 gcloud run jobs execute "$JOB" --region "$REGIAO" --wait || true
 sleep 10
 echo "==> Registro da execução:"
 gcloud logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$JOB\"" \
   --freshness=15m --limit=40 --order=asc --format='value(textPayload)'
+
 echo
-echo "Pronto. Copie o registro acima e envie ao Claude."
+if [[ $APP_OK == 1 ]]; then
+  URL=$(gcloud run services describe "${JOB}-app" --region "$REGIAO" --format='value(status.url)')
+  curl -s "$URL/api/saude" >/dev/null || true
+  CODIGO=$(gcloud storage cat "gs://$BUCKET/config/app.json" | python3 -c 'import json,sys;print(json.load(sys.stdin)["codigo_acesso"])')
+  echo "=================================================================="
+  echo " ENDEREÇO DO APLICATIVO:  $URL"
+  echo " CÓDIGO DE ACESSO:        $CODIGO"
+  echo "   (guarde o código; não compartilhe. Para ver de novo, rode este script outra vez)"
+  echo "=================================================================="
+  echo "Envie ao Claude o registro acima, mas NÃO o código de acesso."
+else
+  echo "A rotina está funcionando, mas o aplicativo não foi publicado."
+  echo "Copie a mensagem de erro acima (do passo 'Aplicativo') e envie ao Claude."
+fi
