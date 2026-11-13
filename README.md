@@ -33,8 +33,8 @@ No iPhone, as notificações exigem que o app esteja adicionado à Tela de Iníc
 - **Busca reserva:** além da OAB, a rotina busca pelo nome do advogado.
 - **Segurança:** no app há "Trocar código e sair dos outros aparelhos".
 - **Backup:** o bucket guarda versões antigas por 60 dias.
-- **Vigia** (`.github/workflows/vigia.yml`): a cada 3 horas o GitHub consulta `/api/saude`. Se a última consulta ao DJEN tiver mais de 3 horas, abre uma issue e o GitHub avisa por e-mail. Ativado pela variável `VIGIA_ATIVO=sim`.
-- **Implantação automática:** depois que os testes passam, cada envio à branch `main` é implantado no Google Cloud, por federação de identidade, sem chaves. Ativada pela variável `DEPLOY_ATIVO=sim`, junto com `GCP_PROJECT`, `GCP_WIF_PROVIDER` e `GCP_DEPLOY_SA`.
+- **Vigia** (`.github/workflows/vigia.yml`): a cada 3 horas o GitHub consulta `/api/saude`. Se a última consulta ao DJEN tiver mais de 3 horas, abre uma issue e o GitHub avisa por e-mail. Ativo.
+- **Implantação automática:** depois que os testes passam, cada envio à branch `main` é implantado no Google Cloud, por federação de identidade, sem chaves. Ativa; só reimplanta quando mudam `prazos/`, `app/`, `Dockerfile` ou `requirements-cloud.txt`.
 
 ## Como funciona
 

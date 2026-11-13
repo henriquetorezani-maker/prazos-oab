@@ -13,14 +13,13 @@ permissions:
 
 jobs:
   vigiar:
-    if: vars.VIGIA_ATIVO == 'sim'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Conferir saúde da rotina
         id: saude
         env:
-          APP_URL: ${{ vars.APP_URL }}
+          APP_URL: https://prazos-oab-app-k2pwd3meqa-rj.a.run.app
         run: |
           set +e
           RESP=$(curl -sS --max-time 60 "$APP_URL/api/saude")

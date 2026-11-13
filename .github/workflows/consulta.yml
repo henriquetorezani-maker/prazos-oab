@@ -25,7 +25,7 @@ jobs:
 
   implantar:
     needs: testes
-    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ATIVO == 'sim'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:
@@ -33,16 +33,30 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
-      - uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_DEPLOY_SA }}
-      - uses: google-github-actions/setup-gcloud@v2
-      - name: Construir e atualizar a rotina e o aplicativo
+          fetch-depth: 2
+      - name: Houve mudança no código implantável?
+        id: mudou
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
+             git diff --name-only HEAD~1 HEAD | grep -qE '^(prazos/|app/|Dockerfile|requirements-cloud.txt)'; then
+            echo "sim=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "Nada a implantar (só testes/docs mudaram)."
+          fi
+      - if: steps.mudou.outputs.sim == '1'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/676852523800/locations/global/workloadIdentityPools/github/providers/prazos-oab
+          service_account: prazos-oab-deploy@project-a4f3c7af-dbb6-41b1-aa4.iam.gserviceaccount.com
+      - if: steps.mudou.outputs.sim == '1'
+        uses: google-github-actions/setup-gcloud@v2
+      - if: steps.mudou.outputs.sim == '1'
+        name: Construir e atualizar a rotina e o aplicativo
         env:
           REGIAO: southamerica-east1
         run: |
-          gcloud config set project "${{ vars.GCP_PROJECT }}"
+          gcloud config set project "project-a4f3c7af-dbb6-41b1-aa4"
           gcloud run jobs deploy prazos-oab --source . --region "$REGIAO" --quiet
           IMAGEM=$(gcloud run jobs describe prazos-oab --region "$REGIAO" \
             --format='value(spec.template.spec.template.spec.containers[0].image)')
