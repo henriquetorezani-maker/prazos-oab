@@ -79,6 +79,13 @@ gcloud run deploy "${JOB}-app" "${ORIGEM[@]}" --region "$REGIAO" --quiet \
   --service-account "$SA" --set-env-vars "GCS_BUCKET=$BUCKET" \
   --allow-unauthenticated --min-instances 0 --max-instances 1 --memory 512Mi || APP_OK=0
 
+if [[ $APP_OK == 1 ]]; then
+  URL=$(gcloud run services describe "${JOB}-app" --region "$REGIAO" --format='value(status.url)')
+  echo "==> Informando o endereço do app ($URL) ao serviço e à rotina (necessário para o push)"
+  gcloud run services update "${JOB}-app" --region "$REGIAO" --quiet --update-env-vars "APP_URL=$URL" >/dev/null
+  gcloud run jobs update "$JOB" --region "$REGIAO" --quiet --update-env-vars "APP_URL=$URL" >/dev/null
+fi
+
 echo "==> Execução de teste da rotina"
 gcloud run jobs execute "$JOB" --region "$REGIAO" --wait || true
 sleep 10
@@ -88,7 +95,6 @@ gcloud logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_nam
 
 echo
 if [[ $APP_OK == 1 ]]; then
-  URL=$(gcloud run services describe "${JOB}-app" --region "$REGIAO" --format='value(status.url)')
   curl -s "$URL/api/saude" >/dev/null || true
   CODIGO=$(gcloud storage cat "gs://$BUCKET/config/app.json" | python3 -c 'import json,sys;print(json.load(sys.stdin)["codigo_acesso"])')
   echo "=================================================================="

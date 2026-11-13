@@ -98,6 +98,7 @@
   <footer>
     Cálculo conservador a partir do DJEN. Confira sempre no PJe.<br>
     Expedientes intimados só pelo sistema PJe não aparecem aqui.<br><br>
+    <button id="testarPush">Testar notificação</button>
     <button id="sair">Sair deste aparelho</button>
   </footer>
 </div>
@@ -129,6 +130,7 @@ $("#entrar").onclick = async () => {
   } catch (e) { $("#msgLogin").textContent = "Sem conexão. Tente de novo."; }
 };
 $("#codigo").addEventListener("keydown", e => { if (e.key === "Enter") $("#entrar").click(); });
+$("#testarPush").onclick = () => testarNotificacao();
 $("#sair").onclick = async () => { await fetch("/api/sair", {method: "POST", credentials: "same-origin"}); mostrarLogin(); };
 
 function pilula(r) {
@@ -219,9 +221,27 @@ function ligarBotaoNotificacao() {
       await api("/api/push/inscrever", sub.toJSON());
       await api("/api/push/teste", {});
       try { localStorage.setItem("push_ok", "1"); } catch (_) {}
+      alert("Notificações ativadas. Deve chegar uma notificação de teste em instantes.");
       render();
     } catch (err) { b.disabled = false; alert("Não foi possível ativar: " + err.message); }
   };
+}
+
+async function testarNotificacao() {
+  const b = $("#testarPush");
+  b.disabled = true;
+  try {
+    // reinscreve este aparelho (caso a inscrição tenha mudado) e envia o teste
+    if ("serviceWorker" in navigator && "PushManager" in window && Notification.permission === "granted") {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = (await reg.pushManager.getSubscription()) ||
+        await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ParaBytes(dados.vapid_publica)});
+      await api("/api/push/inscrever", sub.toJSON());
+    }
+    const r = await api("/api/push/teste", {});
+    alert(`Teste enviado para ${r.enviados} aparelho(s).` + (r.erros && r.erros.length ? "\nAvisos: " + r.erros.join("; ") : ""));
+  } catch (err) { alert("Falha no teste: " + err.message); }
+  b.disabled = false;
 }
 
 async function carregar() {

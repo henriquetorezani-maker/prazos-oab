@@ -22,6 +22,9 @@ PASTA_APP = Path(__file__).resolve().parent.parent / "app"
 STATUS = "data/status.json"
 
 app = Flask(__name__, static_folder=None)
+# O Cloud Run termina o HTTPS na frente do contêiner; isto faz o Flask enxergar https e o host real.
+from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 _cfg = config.carregar()
 app.secret_key = _cfg["segredo_sessao"]
 app.config.update(
@@ -181,5 +184,10 @@ def inscrever():
 @app.post("/api/push/teste")
 @exige_login
 def push_teste():
-    n = push.enviar("Prazos OAB", "Notificações funcionando neste aparelho.", "/", "teste")
-    return jsonify(ok=True, enviados=n)
+    try:
+        n, erros = push.enviar_detalhado("Prazos OAB", "Notificações funcionando neste aparelho.", "/", "teste")
+    except Exception as e:  # configuração incompleta, rede etc.
+        return jsonify(erro=str(e)), 502
+    if n == 0:
+        return jsonify(erro="nenhum aparelho recebeu: " + ("; ".join(erros) or "sem inscrições")), 502
+    return jsonify(ok=True, enviados=n, erros=erros)
