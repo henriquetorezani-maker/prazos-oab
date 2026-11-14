@@ -126,3 +126,40 @@ def test_ia_resposta_mal_formada_nao_quebra():
     from prazos.ia import _extrair_json
     d = _extrair_json('Claro! {"resumo": "x", "providencia": "y", "prazo_dias": 900, "tipo": "dias", "confianca": "alta"}')
     assert d["prazo_dias"] is None and d["tipo"] is None and d["destinatario"] == ""
+
+
+def test_avisos_de_audiencia(ambiente):
+    enviados, lote, relogio, _ = ambiente
+    lote.append({"id": 3, "data_disponibilizacao": "2026-11-12", "siglaTribunal": "TJES",
+                 "nomeOrgao": "Vitória - Comarca da Capital - 6º Juizado Especial Cível", "tipoComunicacao": "Intimação",
+                 "texto": "REQUERENTE: FULANO DE TAL REQUERIDO: EMPRESA X. INTIMAÇÃO AUDIÊNCIA DE CONCILIAÇÃO "
+                          "Data: 20/11/2026 Hora: 14:00", "numero_processo": "50000000020268080024"})
+    rodar.executar()                                          # 13/11, carga inicial
+    enviados.clear()
+
+    def rodar_em(dia, hora):
+        relogio["agora"] = datetime(2026, 11, dia, hora, 17, tzinfo=rodar.TZ)
+        rodar.executar()
+        return [t for t in enviados if t.startswith("🏛️")]
+
+    assert rodar_em(16, 12) == []                             # faltam 4 dias: nada
+    assert rodar_em(17, 11) == []                             # faltam 3, mas antes do meio-dia
+    assert rodar_em(17, 12) == ["🏛️ Audiência em 3 dias às 14:00 — 20/11/2026"]
+    assert len(rodar_em(17, 13)) == 1                         # uma vez por dia só
+    assert len(rodar_em(18, 12)) == 2
+    assert rodar_em(19, 12)[-1].startswith("🏛️ Audiência AMANHÃ")
+    assert rodar_em(20, 7)[-1] == "🏛️ Audiência HOJE às 14:00"
+    assert len(rodar_em(21, 12)) == 4                         # depois da audiência, para
+
+    # audiência avulsa e correção manual
+    dados.criar_manual("123", "instrução", None, audiencia="2026-11-24", hora="09:30")
+    assert len(rodar_em(21, 13)) == 5
+    chave = next(r["chave"] for r in dados.unificar(json.loads((ambiente[3] / "data/intimacoes.json").read_text()))
+                 if r.get("processo", "").startswith("5000000"))
+    dados.definir_audiencia(chave, data="2026-11-23", hora="")
+    assert sorted(rodar_em(22, 12)[-2:]) == ["🏛️ Audiência AMANHÃ — 23/11/2026",
+                                            "🏛️ Audiência em 2 dias às 09:30 — 24/11/2026"]
+    dados.definir_audiencia(chave, sem=True)
+    antes = len([t for t in enviados if t.startswith("🏛️")])
+    depois = rodar_em(23, 12)
+    assert depois[-1] == "🏛️ Audiência AMANHÃ às 09:30 — 24/11/2026" and len(depois) == antes + 1

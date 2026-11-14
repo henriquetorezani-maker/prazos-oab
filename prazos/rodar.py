@@ -25,6 +25,9 @@ TZ = ZoneInfo("America/Sao_Paulo")
 HORA_RESUMO = 8
 HORA_LIMITE_LEMBRETE = 21
 MARCOS_LEMBRETE = (5, 2, 0)  # dias antes do fatal
+HORA_AUDIENCIA = 12          # aviso diário nos 3 dias anteriores à audiência
+HORA_AUDIENCIA_DIA = 7       # aviso no próprio dia, cedo
+DIAS_AVISO_AUDIENCIA = 3
 JANELA_DIAS = 20
 JANELA_PRIMEIRA = 90
 
@@ -50,6 +53,8 @@ def calcular_registro(reg: dict) -> dict:
         reg["partes"] = comunica.extrair_partes(reg.get("texto", ""))
     if dias and reg.get("disponibilizacao"):
         reg.update(dados.calcular(dias, tipo, reg["disponibilizacao"], reg.get("orgao", "")))
+    ref = date.fromisoformat(reg["disponibilizacao"]) if reg.get("disponibilizacao") else None
+    reg["audiencia"] = comunica.extrair_audiencia(reg.get("texto", ""), ref)
     return reg
 
 
@@ -101,6 +106,8 @@ def mensagem_nova(r: dict) -> str:
         if r.get("fatal_alternativo"):
             linhas.append(f"   (se dias duvidosos não forem úteis: {_br(r['fatal_alternativo'])})")
         linhas.append(f"Contagem: {r['contagem']}")
+    if r.get("audiencia"):
+        linhas.append(f"🏛️ Audiência: {_quando_aud(r)} — você será lembrado nos 3 dias anteriores, ao meio-dia")
     linhas.append(f"Obs.: {r['prazo_obs']}")
     if r.get("ia"):
         linhas.append(f"IA: {r['ia'].get('resumo', '')} Providência: {r['ia'].get('providencia', '')}")
@@ -122,6 +129,11 @@ def mensagem_resumo(unif: list[dict], hoje: date) -> str:
             linhas.append(f"• {_br(r['fatal'])}{alerta} — {r['processo']}{quem} ({_vara(r)})")
     else:
         linhas.append("Nenhum prazo calculado em aberto.")
+    auds = [r for r in dados.audiencias(unif) if r["dias_ate_audiencia"] <= 7]
+    if auds:
+        linhas.append("Audiências nos próximos 7 dias:")
+        for r in auds:
+            linhas.append(f"• {_quando_aud(r)} — {r['processo']}" + (f" — {r['partes']}" if r.get("partes") else ""))
     cf = dados.conferir(unif, hoje, 30)
     if cf:
         linhas.append(f"Intimações recentes sem prazo definido (conferir): {len(cf)}")
@@ -156,6 +168,38 @@ def texto_lembrete(r: dict, marco: int) -> tuple[str, str]:
     quando = "VENCE HOJE" if r["dias_restantes"] == 0 else f"vence em {r['dias_restantes']} dia(s) — {_br(r['fatal'])}"
     titulo = f"⏰ Prazo {quando}"
     corpo = f"{r.get('partes') or r['processo']} ({_vara(r)})."
+    if r.get("nota"):
+        corpo += f" Nota: {r['nota'][:120]}"
+    return titulo, corpo
+
+
+def _quando_aud(r: dict) -> str:
+    a = r["audiencia"]
+    return _br(a["data"]) + (f" às {a['hora']}" if a.get("hora") else "")
+
+
+def audiencias_devidas(unif: list[dict], agora: datetime, avisadas: dict) -> list[dict]:
+    """Audiências a avisar agora: uma vez por dia, ao meio-dia, nos 3 dias anteriores,
+    e cedo no próprio dia (se a hora ainda não passou)."""
+    hoje = agora.date().isoformat()
+    out = []
+    for r in dados.audiencias(unif):
+        d, a = r["dias_ate_audiencia"], r["audiencia"]
+        if hoje in avisadas.get(f"{r['chave']}|{a['data']}", []):
+            continue
+        if 1 <= d <= DIAS_AVISO_AUDIENCIA and HORA_AUDIENCIA <= agora.hour < HORA_LIMITE_LEMBRETE:
+            out.append(r)
+        elif d == 0 and agora.hour >= HORA_AUDIENCIA_DIA and (not a.get("hora") or agora.strftime("%H:%M") < a["hora"]):
+            out.append(r)
+    return out
+
+
+def texto_audiencia(r: dict) -> tuple[str, str]:
+    d = r["dias_ate_audiencia"]
+    quando = "HOJE" if d == 0 else "AMANHÃ" if d == 1 else f"em {d} dias"
+    hora = f" às {r['audiencia']['hora']}" if r["audiencia"].get("hora") else ""
+    titulo = f"🏛️ Audiência {quando}{hora}" + ("" if d == 0 else f" — {_br(r['audiencia']['data'])}")
+    corpo = f"{r.get('partes') or r['processo']}" + (f" ({_vara(r)})." if _vara(r) else ".")
     if r.get("nota"):
         corpo += f" Nota: {r['nota'][:120]}"
     return titulo, corpo
@@ -278,6 +322,8 @@ def executar() -> int:
         for chave in novas:
             r = por_chave.get(chave) or registros[chave]
             fatal = f" — fatal {_br(r['fatal'])}" if r.get("fatal") else ""
+            if r.get("audiencia"):
+                fatal += f" — audiência {_quando_aud(r)}"
             corpo = f"{r.get('partes') or r['processo']} — {_vara(r)}. "
             corpo += (r["ia"]["providencia"] if r.get("ia") and r["ia"].get("providencia") else r["prazo_obs"])
             notifica.enviar(mensagem_nova(r), titulo=f"🔔 Nova intimação{fatal}", corpo=corpo, tag=chave)
@@ -301,6 +347,14 @@ def executar() -> int:
             # marca também os marcos anteriores, para não avisar "5 dias" depois de já ter avisado "2 dias"
             ja = set(estado["lembretes"].get(r["chave"], []))
             estado["lembretes"][r["chave"]] = sorted(ja | {m for m in MARCOS_LEMBRETE if m >= marco})
+
+    avisadas = estado.setdefault("audiencias_avisadas", {})
+    for r in audiencias_devidas(unif, agora, avisadas):
+        titulo, corpo = texto_audiencia(r)
+        notifica.enviar(f"{titulo}\n{corpo}", titulo=titulo, corpo=corpo, tag=f"audiencia-{r['chave']}")
+        avisadas.setdefault(f"{r['chave']}|{r['audiencia']['data']}", []).append(hoje.isoformat())
+    limite = (hoje - timedelta(days=30)).isoformat()
+    estado["audiencias_avisadas"] = {k: v for k, v in avisadas.items() if k.rsplit("|", 1)[1] >= limite}
 
     _gravar(ESTADO, estado)
     PAINEL.write_text(painel(unif, agora), encoding="utf-8")

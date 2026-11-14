@@ -1,7 +1,7 @@
 // Service worker: notificações push e funcionamento sem internet.
 // - Arquivos do app: guardados no aparelho (abre mesmo offline).
 // - Dados (/api/dados): a página guarda uma cópia e usa se a rede falhar.
-const VERSAO = "prazos-app-v3";
+const VERSAO = "prazos-app-v4";
 const ARQUIVOS = ["/", "/manifest.webmanifest", "/icone-192.png", "/icone-180.png", "/relatorio.html"];
 
 self.addEventListener("install", (e) => {

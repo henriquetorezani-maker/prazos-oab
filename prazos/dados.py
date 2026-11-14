@@ -15,6 +15,7 @@ AJUSTES = "data/ajustes.json"    # {chave: {"dias": n, "tipo": "uteis"|"corridos
 NOTAS = "data/notas.json"        # {chave: texto}
 MANUAIS = "data/manuais.json"    # [ {chave, processo, partes, orgao, descricao, fatal, criado} ]
 IA = "data/ia.json"              # {chave: {resumo, providencia, prazo_dias, tipo, destinatario, confianca}}
+AUDIENCIAS = "data/audiencias.json"  # {chave: {"data": iso, "hora": "HH:MM"} | {"sem": true}}
 
 
 def comarca_de(orgao: str) -> str:
@@ -59,6 +60,7 @@ def unificar(regs: list[dict], hoje: date | None = None) -> list[dict]:
     notas = armazenamento.ler_json(NOTAS, {})
     manuais = armazenamento.ler_json(MANUAIS, [])
     ia = armazenamento.ler_json(IA, {})
+    auds = armazenamento.ler_json(AUDIENCIAS, {})
 
     vistos, out = set(), []
     for r in sorted(regs, key=lambda r: r.get("disponibilizacao", ""), reverse=True):
@@ -71,11 +73,22 @@ def unificar(regs: list[dict], hoje: date | None = None) -> list[dict]:
             r = _aplicar_ajuste(r, ajustes[r["chave"]])
         out.append(r)
     for m in manuais:
+        if m.get("audiencia"):
+            out.append({**m, "manual": True, "tipo": "Audiência avulsa", "tribunal": "", "fatal": None,
+                        "texto": m.get("descricao", ""), "link": "", "prazo_obs": "audiência cadastrada à mão",
+                        "contagem": "", "disponibilizacao": m.get("criado", "")[:10], "fatal_alternativo": None})
+            continue
         out.append({**m, "manual": True, "tipo": "Prazo avulso", "tribunal": "",
                     "texto": m.get("descricao", ""), "link": "", "prazo_obs": "prazo avulso cadastrado à mão",
                     "contagem": f"fatal informado manualmente: {date.fromisoformat(m['fatal']):%d/%m/%Y}",
                     "disponibilizacao": m.get("criado", "")[:10], "fatal_alternativo": None})
     for r in out:
+        if r["chave"] in auds:
+            a = auds[r["chave"]]
+            r["audiencia"] = None if a.get("sem") else {"data": a["data"], "hora": a.get("hora", "")}
+            r["audiencia_ajustada"] = True
+        if r.get("audiencia"):
+            r["dias_ate_audiencia"] = (date.fromisoformat(r["audiencia"]["data"]) - hoje).days
         r["cumprido"] = status.get(r["chave"], {}).get("cumprido")
         r["nota"] = notas.get(r["chave"], "")
         r["ia"] = ia.get(r["chave"])
@@ -93,8 +106,25 @@ def abertos(lista: list[dict]) -> list[dict]:
 
 def conferir(lista: list[dict], hoje: date, dias: int = 45) -> list[dict]:
     limite = (hoje - timedelta(days=dias)).isoformat()
-    return [r for r in lista if not r.get("fatal") and not r["cumprido"]
+    return [r for r in lista if not r.get("fatal") and not r["cumprido"] and not r.get("audiencia")
             and r.get("disponibilizacao", "") >= limite]
+
+
+def audiencias(lista: list[dict]) -> list[dict]:
+    """Audiências de hoje em diante, em ordem de data. Se o mesmo processo tiver várias intimações
+    com audiência (ex.: redesignação), vale a da intimação mais recente; as avulsas entram todas.
+    Marcar a intimação como cumprida não tira a audiência da lista: ela ainda vai acontecer."""
+    vistos, out = set(), []
+    for r in sorted(lista, key=lambda r: r.get("disponibilizacao", ""), reverse=True):
+        a = r.get("audiencia")
+        if not a or r.get("dias_ate_audiencia", -1) < 0:
+            continue
+        if not r.get("manual"):
+            if r.get("processo") in vistos:
+                continue
+            vistos.add(r.get("processo"))
+        out.append(r)
+    return sorted(out, key=lambda r: (r["audiencia"]["data"], r["audiencia"].get("hora") or "99"))
 
 
 # --- Escritas feitas pelo aplicativo ------------------------------------------------
@@ -123,13 +153,31 @@ def definir_nota(chave: str, texto: str) -> None:
     armazenamento.gravar_json(NOTAS, notas)
 
 
-def criar_manual(processo: str, descricao: str, fatal: str, partes: str = "", orgao: str = "") -> str:
-    date.fromisoformat(fatal)
+def _hora_valida(hora: str) -> str:
+    hora = (hora or "").strip()
+    if hora:
+        h, m = hora.split(":")
+        if not (0 <= int(h) <= 23 and 0 <= int(m) <= 59):
+            raise ValueError("hora inválida")
+        hora = f"{int(h):02d}:{int(m):02d}"
+    return hora
+
+
+def criar_manual(processo: str, descricao: str, fatal: str | None, partes: str = "", orgao: str = "",
+                 audiencia: str | None = None, hora: str = "") -> str:
+    """Prazo avulso (com fatal) ou audiência avulsa (com data da audiência e hora opcional)."""
+    item = {"processo": processo.strip()[:40], "descricao": descricao.strip()[:1000],
+            "partes": partes.strip()[:120], "orgao": orgao.strip()[:160],
+            "criado": datetime.now(TZ).isoformat(timespec="minutes")}
+    if audiencia:
+        date.fromisoformat(audiencia)
+        item["audiencia"] = {"data": audiencia, "hora": _hora_valida(hora)}
+    else:
+        date.fromisoformat(fatal or "")
+        item["fatal"] = fatal
     lista = armazenamento.ler_json(MANUAIS, [])
     chave = "manual-" + uuid.uuid4().hex[:10]
-    lista.append({"chave": chave, "processo": processo.strip()[:40], "descricao": descricao.strip()[:1000],
-                  "fatal": fatal, "partes": partes.strip()[:120], "orgao": orgao.strip()[:160],
-                  "criado": datetime.now(TZ).isoformat(timespec="minutes")})
+    lista.append({"chave": chave, **item})
     armazenamento.gravar_json(MANUAIS, lista)
     return chave
 
@@ -137,3 +185,18 @@ def criar_manual(processo: str, descricao: str, fatal: str, partes: str = "", or
 def excluir_manual(chave: str) -> None:
     lista = [m for m in armazenamento.ler_json(MANUAIS, []) if m.get("chave") != chave]
     armazenamento.gravar_json(MANUAIS, lista)
+
+
+def definir_audiencia(chave: str, data: str | None = None, hora: str = "", sem: bool = False,
+                      limpar: bool = False) -> None:
+    """Corrige a audiência de uma intimação: define data/hora, marca que não há audiência
+    (cancelada ou leitura errada) ou volta à leitura automática do texto."""
+    auds = armazenamento.ler_json(AUDIENCIAS, {})
+    if limpar:
+        auds.pop(chave, None)
+    elif sem:
+        auds[chave] = {"sem": True}
+    else:
+        date.fromisoformat(data or "")
+        auds[chave] = {"data": data, "hora": _hora_valida(hora)}
+    armazenamento.gravar_json(AUDIENCIAS, auds)

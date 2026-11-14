@@ -232,3 +232,48 @@ def identificar_prazo(texto: str) -> tuple[int | None, str, str]:
     if re.search(r"audi[êe]ncia", t, re.IGNORECASE):
         return None, "intimação de audiência — conferir data e se há providência", "uteis"
     return None, "prazo não identificado no texto — conferir", "uteis"
+
+
+# --- Audiências -----------------------------------------------------------------------
+
+_MESES = {"janeiro": 1, "fevereiro": 2, "março": 3, "marco": 3, "abril": 4, "maio": 5, "junho": 6,
+          "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12}
+_RE_AUD = re.compile(r"audi[êe]ncia", re.IGNORECASE)
+_RE_DATA_NUM = re.compile(r"\b(\d{1,2})[/.](\d{1,2})[/.](\d{4})\b")
+_RE_DATA_EXT = re.compile(r"\b(\d{1,2})º?\s+de\s+(" + "|".join(_MESES) + r")\s+de\s+(\d{4})\b", re.IGNORECASE)
+_RE_HORA = re.compile(r"\b([01]?\d|2[0-3])\s*(?::|h|horas?)\s*([0-5]\d)?\s*(?:min(?:utos)?)?", re.IGNORECASE)
+
+
+def _datas_em(trecho: str) -> list[tuple[int, date]]:
+    out = []
+    for m in _RE_DATA_NUM.finditer(trecho):
+        try:
+            out.append((m.end(), date(int(m.group(3)), int(m.group(2)), int(m.group(1)))))
+        except ValueError:
+            pass
+    for m in _RE_DATA_EXT.finditer(trecho):
+        try:
+            out.append((m.end(), date(int(m.group(3)), _MESES[m.group(2).lower()], int(m.group(1)))))
+        except ValueError:
+            pass
+    return sorted(out)
+
+
+def extrair_audiencia(texto: str, referencia: date | None = None) -> dict | None:
+    """Data (e hora, se houver) da audiência designada no ato: {"data": iso, "hora": "HH:MM" | ""}.
+
+    Procura a primeira data depois de cada menção a "audiência" (até ~400 caracteres adiante) e
+    descarta datas anteriores à disponibilização (audiências já realizadas). Na dúvida, devolve None
+    e a intimação continua em "A conferir"."""
+    t = texto or ""
+    for m in _RE_AUD.finditer(t):
+        trecho = t[m.start():m.start() + 400]
+        for fim, d in _datas_em(trecho):
+            if referencia and d < referencia:
+                continue
+            hora = ""
+            h = _RE_HORA.search(trecho[fim:fim + 40])
+            if h and (h.group(2) or re.search(r"h|hora", h.group(0), re.IGNORECASE)):
+                hora = f"{int(h.group(1)):02d}:{h.group(2) or '00'}"
+            return {"data": d.isoformat(), "hora": hora}
+    return None

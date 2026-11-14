@@ -77,9 +77,10 @@ def calendario(token):
         return "não encontrado", 404
     regs = armazenamento.ler_json("data/intimacoes.json", [])
     hoje = datetime.now(TZ).date()
-    itens = [r for r in dados_mod.unificar(regs, hoje) if r.get("fatal") and not r["cumprido"]
-             and r.get("dias_restantes", -1) >= -30]
-    resp = app.response_class(gerar_ics(itens, cfg.get("url_app", "")), mimetype="text/calendar")
+    unif = dados_mod.unificar(regs, hoje)
+    itens = [r for r in unif if r.get("fatal") and not r["cumprido"] and r.get("dias_restantes", -1) >= -30]
+    resp = app.response_class(gerar_ics(itens, cfg.get("url_app", ""), dados_mod.audiencias(unif)),
+                              mimetype="text/calendar")
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
@@ -101,11 +102,14 @@ def _ics_dobra(linha: str) -> str:
     return "\r\n".join(out)
 
 
-def gerar_ics(itens: list[dict], url_app: str) -> str:
+def gerar_ics(itens: list[dict], url_app: str, audiencias: list[dict] | None = None) -> str:
     agora = datetime.now(TZ).strftime("%Y%m%dT%H%M%S")
     linhas = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//prazos-oab//PT-BR", "CALSCALE:GREGORIAN",
               "METHOD:PUBLISH", "X-WR-CALNAME:Prazos OAB", "X-WR-TIMEZONE:America/Sao_Paulo",
               "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H"]
+    if audiencias:
+        linhas += ["BEGIN:VTIMEZONE", "TZID:America/Sao_Paulo", "BEGIN:STANDARD", "DTSTART:19700101T000000",
+                   "TZOFFSETFROM:-0300", "TZOFFSETTO:-0300", "TZNAME:-03", "END:STANDARD", "END:VTIMEZONE"]
     for r in itens:
         d = date.fromisoformat(r["fatal"])
         fim = d + timedelta(days=1)
@@ -122,6 +126,25 @@ def gerar_ics(itens: list[dict], url_app: str) -> str:
                    f"DESCRIPTION:{_ics_esc(desc)}", f"URL:{url_app or ''}", "TRANSP:TRANSPARENT",
                    "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Prazo fatal amanhã", "TRIGGER:-PT15H", "END:VALARM",
                    "END:VEVENT"]
+    for r in audiencias or []:
+        a, quem = r["audiencia"], r.get("partes") or r["processo"]
+        d = date.fromisoformat(a["data"])
+        if a.get("hora"):
+            h, m = map(int, a["hora"].split(":"))
+            ini = datetime(d.year, d.month, d.day, h, m)
+            fim = ini + timedelta(hours=1)
+            quando = [f"DTSTART;TZID=America/Sao_Paulo:{ini:%Y%m%dT%H%M%S}",
+                      f"DTEND;TZID=America/Sao_Paulo:{fim:%Y%m%dT%H%M%S}"]
+        else:
+            quando = [f"DTSTART;VALUE=DATE:{d:%Y%m%d}", f"DTEND;VALUE=DATE:{d + timedelta(days=1):%Y%m%d}"]
+        desc = f"Processo {r['processo']}\n{r.get('orgao', '')}"
+        if r.get("nota"):
+            desc += f"\nNota: {r['nota']}"
+        desc += "\nConfira sempre no PJe."
+        linhas += ["BEGIN:VEVENT", f"UID:aud-{r['chave']}-{a['data']}@prazos-oab", f"DTSTAMP:{agora}", *quando,
+                   f"SUMMARY:{_ics_esc('🏛️ Audiência — ' + quem)}", f"DESCRIPTION:{_ics_esc(desc)}",
+                   f"URL:{url_app or ''}", "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Audiência amanhã",
+                   "TRIGGER:-P1D", "END:VALARM", "END:VEVENT"]
     linhas.append("END:VCALENDAR")
     return "\r\n".join(_ics_dobra(l) for l in linhas) + "\r\n"
 
@@ -182,6 +205,7 @@ def montar_dados(hoje: date | None = None) -> dict:
         "falhas_seguidas": estado.get("falhas_seguidas", 0),
         "abertos": dados_mod.abertos(unif),
         "conferir": dados_mod.conferir(unif, hoje),
+        "audiencias": dados_mod.audiencias(unif),
         "cumpridos": sorted((r for r in unif if r["cumprido"]), key=lambda r: r["cumprido"], reverse=True)[:50],
         "historico": sorted(unif, key=lambda r: r.get("disponibilizacao", ""), reverse=True),
     }
@@ -278,13 +302,31 @@ def manual():
         if c.get("excluir"):
             dados_mod.excluir_manual(str(c["excluir"]))
             return jsonify(ok=True)
-        if not c.get("processo") or not c.get("fatal"):
-            return jsonify(erro="informe processo e data fatal"), 400
-        chave = dados_mod.criar_manual(str(c["processo"]), str(c.get("descricao", "")), str(c["fatal"]),
-                                       str(c.get("partes", "")), str(c.get("orgao", "")))
+        if not c.get("processo") or not (c.get("fatal") or c.get("audiencia")):
+            return jsonify(erro="informe o processo e a data"), 400
+        chave = dados_mod.criar_manual(str(c["processo"]), str(c.get("descricao", "")),
+                                       str(c["fatal"]) if c.get("fatal") else None,
+                                       str(c.get("partes", "")), str(c.get("orgao", "")),
+                                       audiencia=str(c["audiencia"]) if c.get("audiencia") else None,
+                                       hora=str(c.get("hora", "")))
     except ValueError:
         return jsonify(erro="data inválida"), 400
     return jsonify(ok=True, chave=chave)
+
+
+@app.post("/api/audiencia")
+@exige_login
+def audiencia():
+    c = _corpo()
+    chave = str(c.get("chave", ""))
+    if not chave:
+        return jsonify(erro="chave ausente"), 400
+    try:
+        dados_mod.definir_audiencia(chave, data=c.get("data"), hora=str(c.get("hora", "")),
+                                    sem=bool(c.get("sem")), limpar=bool(c.get("limpar")))
+    except (ValueError, TypeError):
+        return jsonify(erro="data ou hora inválida"), 400
+    return jsonify(ok=True)
 
 
 @app.post("/api/trocar-codigo")

@@ -80,3 +80,14 @@ def test_normalizar_e_enriquecer_daniela():
     assert comarca_de(c.orgao) == "Vitória"
     r = enriquecer(c)
     assert r["fatal"] == "2026-12-07" and r["partes"].startswith("Daniela")
+
+
+def test_extrair_audiencia():
+    from datetime import date
+    from prazos.comunica import extrair_audiencia as e
+    ref = date(2026, 11, 1)
+    assert e("INTIMAÇÃO AUDIÊNCIA DE CONCILIAÇÃO ... Data: 15/02/2027 Hora: 14:00", ref) == {"data": "2027-02-15", "hora": "14:00"}
+    assert e("designo audiência de instrução para o dia 3 de março de 2027, às 14h30min.", ref) == {"data": "2027-03-03", "hora": "14:30"}
+    assert e("audiência redesignada para 09/12/2026 às 9h.", ref) == {"data": "2026-12-09", "hora": "09:00"}
+    assert e("Realizada audiência em 10/10/2026. Intime-se.", ref) is None
+    assert e("dispenso a audiência conciliatória. Prazo de 15 dias.", ref) is None

@@ -132,3 +132,21 @@ def test_dados_tem_dias_uteis(cliente):
     _logar(c, modulo)
     d = c.get("/api/dados").get_json()
     assert all("uteis_restantes" in r for r in d["abertos"])
+
+
+def test_audiencias_no_app_e_na_agenda(cliente):
+    c, modulo = cliente
+    _logar(c, modulo)
+    assert c.post("/api/manual", json={"processo": "123", "audiencia": "2099-01-10", "hora": "14:30",
+                                       "descricao": "instrução"}).status_code == 200
+    assert c.post("/api/audiencia", json={"chave": "c", "data": "2099-01-05", "hora": "9:00"}).status_code == 200
+    assert c.post("/api/audiencia", json={"chave": "c", "data": "x"}).status_code == 400
+    d = c.get("/api/dados").get_json()
+    assert [a["audiencia"]["data"] for a in d["audiencias"]] == ["2099-01-05", "2099-01-10"]
+    assert d["audiencias"][0]["audiencia"]["hora"] == "09:00"
+    assert all(r["chave"] != "c" for r in d["conferir"])     # com audiência, sai de "A conferir"
+    url = d["calendario_url"]
+    corpo = c.get("/cal/" + url.split("/cal/")[1]).data.decode()
+    assert "DTSTART;TZID=America/Sao_Paulo:20990110T143000" in corpo and "BEGIN:VTIMEZONE" in corpo
+    assert c.post("/api/audiencia", json={"chave": "c", "sem": True}).status_code == 200
+    assert len(c.get("/api/dados").get_json()["audiencias"]) == 1

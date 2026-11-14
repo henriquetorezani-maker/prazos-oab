@@ -78,6 +78,11 @@
   .copiar { border: 0; background: var(--suave); color: var(--sub); font-size: 11px; font-weight: 700; padding: 3px 8px;
     border-radius: 6px; cursor: pointer; }
   .obs { font-size: 13px; color: var(--sub); margin-top: 6px; }
+  .c-roxo { background: color-mix(in srgb, #7b4bb7 16%, transparent); color: #7b4bb7; }
+  @media (prefers-color-scheme: dark) { .c-roxo { color: #c3a2ee; } }
+  .aud { margin-top: 8px; padding: 8px 10px; border-radius: 10px; font-size: 14px; font-weight: 600;
+         background: color-mix(in srgb, #7b4bb7 12%, transparent); }
+  .aud.longe { font-weight: 500; }
   .ia { margin-top: 10px; background: var(--ia-bg); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
   .ia .tit { color: var(--ia); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
   .ia .sug { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ia); font-weight: 600; font-size: 13px; }
@@ -123,7 +128,7 @@
   .dia.sel { background: var(--marca); color: #fff; }
   .dia .pts { position: absolute; left: 0; right: 0; bottom: 3px; display: flex; justify-content: center; gap: 2px; }
   .dia .pts i { width: 5px; height: 5px; border-radius: 50%; background: var(--verde); display: block; }
-  .dia .pts i.verm { background: var(--verm); } .dia .pts i.amar { background: var(--amar); } .dia .pts i.ok { background: var(--sub); opacity: .5; }
+  .dia .pts i.verm { background: var(--verm); } .dia .pts i.amar { background: var(--amar); } .dia .pts i.ok { background: var(--sub); opacity: .5; } .dia .pts i.aud { background: #7b4bb7; }
 
   /* Histórico */
   .chips { display: flex; gap: 6px; overflow-x: auto; margin: 10px 0 4px; padding-bottom: 2px; }
@@ -200,7 +205,7 @@
       <input id="busca" type="search" placeholder="Buscar processo, parte, vara, texto ou nota">
       <div class="chips" id="filtros">
         <button data-f="todos" class="on">Todos</button><button data-f="prazo">Com prazo</button>
-        <button data-f="conferir">A conferir</button><button data-f="cumpridos">Cumpridos</button><button data-f="avulsos">Avulsos</button>
+        <button data-f="conferir">A conferir</button><button data-f="cumpridos">Cumpridos</button><button data-f="avulsos">Avulsos</button><button data-f="audiencias">Audiências</button>
       </div>
       <div id="listaHist"></div>
     </section>
@@ -219,13 +224,15 @@
   <div class="folha-fundo" id="folhaFundo"></div>
   <div class="folha" id="folha">
     <div class="puxador"></div>
-    <h3>Novo prazo avulso</h3>
-    <div class="obs">Para expedientes que saíram só no PJe ou prazos que você quer controlar.</div>
+    <h3 id="avTitulo">Novo prazo avulso</h3>
+    <div class="chips" id="avTipo" style="margin-top:8px"><button data-t="prazo" class="on">Prazo</button><button data-t="audiencia">Audiência</button></div>
+    <div class="obs" id="avObs">Para expedientes que saíram só no PJe ou prazos que você quer controlar.</div>
     <label>Processo</label><input id="avProc" inputmode="numeric" placeholder="0000000-00.0000.8.08.0000">
     <label>Partes</label><input id="avPartes" placeholder="Autor x Réu">
     <label>Vara / órgão</label><input id="avOrgao" placeholder="Opcional">
-    <label>O que fazer</label><textarea id="avDesc" placeholder="Ex.: manifestar sobre o laudo pericial"></textarea>
-    <label>Data fatal</label><input id="avFatal" type="date">
+    <label id="avDescRot">O que fazer</label><textarea id="avDesc" placeholder="Ex.: manifestar sobre o laudo pericial"></textarea>
+    <label id="avDataRot">Data fatal</label><input id="avFatal" type="date">
+    <div id="avHoraBloco" class="oculto"><label>Hora (opcional)</label><input id="avHora" type="time"></div>
     <div class="acoes" style="margin-top:16px"><button class="prim" id="avSalvar" style="flex:1">Cadastrar</button><button id="avCancelar">Cancelar</button></div>
   </div>
 </div>
@@ -295,6 +302,7 @@ function urg(r) {
   if (u <= 2) return "verm"; if (u <= 5) return "amar"; return "verde";
 }
 function chipPrazo(r) {
+  if (!r.fatal && r.audiencia) return `<span class="chip c-roxo">${r.dias_ate_audiencia === 0 ? "audiência hoje" : r.dias_ate_audiencia === 1 ? "audiência amanhã" : r.dias_ate_audiencia > 0 ? "audiência em " + r.dias_ate_audiencia + " dias" : "audiência"}</span>`;
   if (!r.fatal) return `<span class="chip c-azul">${r.manual ? "avulso" : "conferir"}</span>`;
   if (r.cumprido) return `<span class="chip c-azul">cumprido</span>`;
   const u = r.uteis_restantes, d = r.dias_restantes;
@@ -320,6 +328,7 @@ function cartao(r) {
   porChave[r.chave] = r;
   const k = esc(r.chave);
   const quando = r.fatal ? `<div class="quando num">${curta(r.fatal)}<small>${dt(r.fatal).getFullYear()}</small></div>`
+    : r.manual && r.audiencia ? `<div class="quando num">${curta(r.audiencia.data)}<small>${dt(r.audiencia.data).getFullYear()}</small></div>`
     : `<div class="quando" style="font-size:15px;color:var(--sub)">${r.manual ? "Prazo avulso" : "Publicada " + (r.disponibilizacao ? br(r.disponibilizacao) : "")}</div>`;
   const pje = r.link && /^https:\/\/[a-z0-9.-]+\.jus\.br\//i.test(r.link)
     ? `<a class="btn leve" href="${esc(r.link)}" target="_blank" rel="noopener">Abrir no PJe</a>` : "";
@@ -333,6 +342,7 @@ function cartao(r) {
       ${r.partes ? `<div class="partes">${esc(r.partes)}</div>` : ""}
       <div class="meta num">${esc(r.processo)} <button class="copiar" data-acao="copiar" data-txt="${esc(r.processo)}">copiar</button></div>
       <div class="meta">${esc((r.orgao || "").split(" - ").slice(-1)[0])}</div>
+      ${linhaAud(r)}
       <div class="obs">${esc(r.prazo_obs)}</div>
       ${blocoIA(r)}
       ${r.nota ? `<div class="nota">📝 ${esc(r.nota)}</div>` : ""}
@@ -340,7 +350,7 @@ function cartao(r) {
         ${r.contagem ? `<div class="contagem">${esc(r.contagem)}</div>` : ""}
         <div class="texto">${destacarPrazo(r.texto)}</div>
       </details>
-      <div class="acoes">${botaoPrazo}<button class="leve" data-acao="form-nota" data-chave="${k}">Nota</button>${pje}</div>
+      <div class="acoes">${r.manual && r.audiencia ? "" : botaoPrazo}${r.manual ? (r.audiencia ? botaoPrazo : "") : `<button class="leve" data-acao="form-aud" data-chave="${k}">Audiência</button>`}<button class="leve" data-acao="form-nota" data-chave="${k}">Nota</button>${pje}</div>
       <div class="formslot"></div>
     </div></div>`;
 }
@@ -353,6 +363,22 @@ function formPrazo(r) {
     <label>ou data fatal exata</label><input type="date" id="ff-${k}">
     <div class="acoes"><button class="prim" data-acao="salvar-prazo" data-chave="${k}">Salvar</button>
       ${r.ajustado ? `<button data-acao="limpar-prazo" data-chave="${k}">Voltar ao automático</button>` : ""}</div></div>`;
+}
+function linhaAud(r) {
+  if (!r.audiencia) return "";
+  const a = r.audiencia, d = r.dias_ate_audiencia;
+  const passou = d !== undefined && d < 0;
+  return `<div class="aud ${d > 3 || passou ? "longe" : ""}">🏛️ Audiência ${passou ? "realizada em" : ""} ${br(a.data)}${a.hora ? " às " + esc(a.hora) : ""}${r.audiencia_ajustada ? " <small>(definida à mão)</small>" : ""}</div>`;
+}
+function formAud(r) {
+  const k = esc(r.chave), a = r.audiencia || {};
+  return `<div class="form">
+    <div class="obs" style="margin-top:0">Você recebe um aviso por dia, ao meio-dia, nos 3 dias anteriores, e outro cedo no dia.</div>
+    <div class="duas"><div><label>Data da audiência</label><input type="date" id="fa-${k}" value="${esc(a.data || "")}"></div>
+      <div><label>Hora</label><input type="time" id="fh-${k}" value="${esc(a.hora || "")}"></div></div>
+    <div class="acoes"><button class="prim" data-acao="salvar-aud" data-chave="${k}">Salvar</button>
+      <button data-acao="sem-aud" data-chave="${k}">Não há audiência</button>
+      ${r.audiencia_ajustada ? `<button data-acao="limpar-aud" data-chave="${k}">Voltar ao automático</button>` : ""}</div></div>`;
 }
 function formNota(r) {
   const k = esc(r.chave);
@@ -377,6 +403,7 @@ function renderPrazos() {
       <div class="quem">${esc(p.partes || p.processo)}</div><div class="onde">${esc((p.orgao || "").split(" - ").slice(-1)[0])}</div></div>`;
   } else html += vazio("🎉", "Nenhum prazo em aberto.");
   const sec = (t, l) => l.length ? `<h2 class="grupo">${t}<span class="cont">${l.length}</span></h2>` + l.map(cartao).join("") : "";
+  html += sec("Audiências", dados.audiencias || []);
   html += sec("Esta semana", g.semana) + sec("Próxima semana", g.proxima) + sec("Depois", g.depois);
   html += dados.conferir.length ? `<h2 class="grupo">A conferir<span class="cont">${dados.conferir.length}</span></h2>` + dados.conferir.map(cartao).join("") : "";
   $("#v-prazos").innerHTML = html;
@@ -388,12 +415,18 @@ function renderCalendario() {
   const todos = dados.historico.filter(r => r.fatal);
   const porDia = {};
   todos.forEach(r => (porDia[r.fatal] = porDia[r.fatal] || []).push(r));
+  const vistosAud = new Set();
+  dados.historico.filter(r => r.audiencia).forEach(r => {
+    const id = r.manual ? r.chave : r.processo + "|" + r.audiencia.data;
+    if (vistosAud.has(id) || (porDia[r.audiencia.data] || []).includes(r)) return;
+    vistosAud.add(id); (porDia[r.audiencia.data] = porDia[r.audiencia.data] || []).push(r);
+  });
   const ini = new Date(calMes); ini.setDate(1 - ((ini.getDay() + 6) % 7)); // segunda-feira
   let grade = ["seg","ter","qua","qui","sex","sáb","dom"].map(s => `<div class="sem">${s}</div>`).join("");
   for (let i = 0; i < 42; i++) {
     const d = new Date(ini); d.setDate(ini.getDate() + i);
     const iso = isoDe(d), lista = porDia[iso] || [];
-    const pts = lista.slice(0, 3).map(r => `<i class="${r.cumprido ? "ok" : urg(r)}"></i>`).join("");
+    const pts = lista.slice(0, 3).map(r => `<i class="${r.audiencia && r.audiencia.data === iso && r.fatal !== iso ? "aud" : r.cumprido ? "ok" : urg(r)}"></i>`).join("");
     const cls = ["dia", d.getMonth() !== calMes.getMonth() ? "fora" : "", d.getDay() % 6 === 0 ? "fds" : "",
                  iso === dados.hoje ? "hoje" : "", iso === calSel ? "sel" : ""].join(" ");
     grade += `<div class="${cls}" data-dia="${iso}">${d.getDate()}<span class="pts">${pts}</span></div>`;
@@ -403,7 +436,7 @@ function renderCalendario() {
       <b>${MESES[calMes.getMonth()]} ${calMes.getFullYear()}</b><button data-mes="1">›</button></div>
       <div class="grade">${grade}</div></div>
     <h2 class="grupo">${curta(calSel)}<span class="cont">${lista.length || ""}</span></h2>
-    ${lista.length ? lista.map(cartao).join("") : vazio("📅", "Nenhum prazo neste dia.")}`;
+    ${lista.length ? lista.map(cartao).join("") : vazio("📅", "Nenhum prazo ou audiência neste dia.")}`;
 }
 function renderHistorico() {
   const q = $("#busca").value.trim().toLowerCase();
@@ -412,6 +445,7 @@ function renderHistorico() {
   if (filtro === "conferir") l = l.filter(r => !r.fatal && !r.cumprido);
   if (filtro === "cumpridos") l = l.filter(r => r.cumprido);
   if (filtro === "avulsos") l = l.filter(r => r.manual);
+  if (filtro === "audiencias") l = l.filter(r => r.audiencia);
   if (q) l = l.filter(r => [r.processo, r.partes, r.orgao, r.texto, r.nota, r.prazo_obs].some(v => (v || "").toLowerCase().includes(q)));
   $("#listaHist").innerHTML = l.length ? `<h2 class="grupo">Resultados<span class="cont">${l.length}</span></h2>` + l.map(cartao).join("") : vazio("🔎", "Nada encontrado.");
 }
@@ -491,6 +525,7 @@ document.addEventListener("click", async (e) => {
   const slot = b.closest(".card")?.querySelector(".formslot");
   if (acao === "form-prazo") { slot.innerHTML = slot.innerHTML ? "" : formPrazo(r); return; }
   if (acao === "form-nota") { slot.innerHTML = slot.innerHTML ? "" : formNota(r); return; }
+  if (acao === "form-aud") { slot.innerHTML = slot.innerHTML ? "" : formAud(r); return; }
   b.disabled = true;
   try {
     if (acao === "cumprir" || acao === "desfazer") { await marcarCumprido(chave, acao === "cumprir"); return; }
@@ -500,11 +535,17 @@ document.addEventListener("click", async (e) => {
       await api("/api/ajuste", fatal ? {chave, fatal} : {chave, dias: Number(dias), tipo: $("#ft-" + CSS.escape(chave)).value});
       toast("Prazo salvo");
     } else if (acao === "limpar-prazo") { await api("/api/ajuste", {chave, limpar: true}); toast("Voltou ao cálculo automático"); }
+    else if (acao === "salvar-aud") {
+      const data = $("#fa-" + CSS.escape(chave)).value, hora = $("#fh-" + CSS.escape(chave)).value;
+      if (!data) { toast("Informe a data da audiência"); b.disabled = false; return; }
+      await api("/api/audiencia", {chave, data, hora}); toast("Audiência salva");
+    } else if (acao === "sem-aud") { await api("/api/audiencia", {chave, sem: true}); toast("Marcado: sem audiência"); }
+    else if (acao === "limpar-aud") { await api("/api/audiencia", {chave, limpar: true}); toast("Voltou à leitura automática"); }
     else if (acao === "salvar-nota") { await api("/api/nota", {chave, texto: $("#fn-" + CSS.escape(chave)).value}); toast("Nota salva"); }
     else if (acao === "aplicar-ia") { await api("/api/ia/aplicar", {chave}); toast("Sugestão da IA aplicada"); }
     else if (acao === "excluir") {
-      if (!confirm("Excluir este prazo avulso?")) { b.disabled = false; return; }
-      await api("/api/manual", {excluir: chave}); toast("Prazo avulso excluído");
+      if (!confirm(r && r.audiencia ? "Excluir esta audiência avulsa?" : "Excluir este prazo avulso?")) { b.disabled = false; return; }
+      await api("/api/manual", {excluir: chave}); toast("Excluído");
     }
     await carregar();
   } catch (err) { b.disabled = false; if (err.message !== "login") toast("Não foi possível salvar: " + err.message); }
@@ -535,14 +576,29 @@ function ligarSwipe() {
 function abrirFolha(sim) { $("#folha").classList.toggle("on", sim); $("#folhaFundo").classList.toggle("on", sim); }
 $("#fab").onclick = () => { if (vista === "calendario" && calSel) $("#avFatal").value = calSel; abrirFolha(true); };
 $("#folhaFundo").onclick = $("#avCancelar").onclick = () => abrirFolha(false);
+let avTipo = "prazo";
+function tipoFolha(t) {
+  avTipo = t; const aud = t === "audiencia";
+  $$("#avTipo button").forEach(x => x.classList.toggle("on", x.dataset.t === t));
+  $("#avTitulo").textContent = aud ? "Nova audiência" : "Novo prazo avulso";
+  $("#avObs").textContent = aud ? "Você recebe um aviso por dia, ao meio-dia, nos 3 dias anteriores, e outro cedo no dia."
+                                : "Para expedientes que saíram só no PJe ou prazos que você quer controlar.";
+  $("#avDescRot").textContent = aud ? "Tipo / observação" : "O que fazer";
+  $("#avDesc").placeholder = aud ? "Ex.: conciliação, presencial na sala 3" : "Ex.: manifestar sobre o laudo pericial";
+  $("#avDataRot").textContent = aud ? "Data da audiência" : "Data fatal";
+  $("#avHoraBloco").classList.toggle("oculto", !aud);
+}
+$$("#avTipo button").forEach(x => x.onclick = () => tipoFolha(x.dataset.t));
 $("#avSalvar").onclick = async () => {
   const corpo = {processo: $("#avProc").value, partes: $("#avPartes").value, orgao: $("#avOrgao").value,
-                 descricao: $("#avDesc").value, fatal: $("#avFatal").value};
-  if (!corpo.processo || !corpo.fatal) { toast("Informe o processo e a data fatal"); return; }
+                 descricao: $("#avDesc").value};
+  const data = $("#avFatal").value;
+  if (avTipo === "audiencia") { corpo.audiencia = data; corpo.hora = $("#avHora").value; } else corpo.fatal = data;
+  if (!corpo.processo || !data) { toast("Informe o processo e a data"); return; }
   try {
     await api("/api/manual", corpo);
-    ["#avProc", "#avPartes", "#avOrgao", "#avDesc", "#avFatal"].forEach(s => $(s).value = "");
-    abrirFolha(false); toast("Prazo avulso cadastrado"); await carregar();
+    ["#avProc", "#avPartes", "#avOrgao", "#avDesc", "#avFatal", "#avHora"].forEach(s => $(s).value = "");
+    abrirFolha(false); toast(avTipo === "audiencia" ? "Audiência cadastrada" : "Prazo avulso cadastrado"); tipoFolha("prazo"); await carregar();
   } catch (err) { if (err.message !== "login") toast("Não foi possível cadastrar: " + err.message); }
 };
 
